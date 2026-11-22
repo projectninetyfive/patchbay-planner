@@ -270,7 +270,7 @@ details summary{cursor:pointer;font:600 1rem var(--display);letter-spacing:.04em
     <summary>Import or export the studio as JSON</summary>
     <p class="muted small" style="margin:0">This page saves in this browser only. Download a backup to move your studio to another computer or browser, and open it there. Paste JSON here and press Load to replace the current studio.</p>
     <textarea id="json" aria-label="Studio JSON" spellcheck="false"></textarea>
-    <div class="fields"><button class="btn" id="copyjson">Copy JSON</button><button class="btn" id="loadjson">Load JSON</button><button class="btn" id="dljson">Download backup</button><label class="btn" style="display:inline-flex;align-items:center">Open backup<input type="file" id="openjson" accept=".json,application/json" hidden></label><button class="btn" id="blankjson">Start a blank studio</button><span class="muted small" id="jsonstate"></span></div>
+    <div class="fields"><button class="btn" id="copyjson">Copy JSON</button><button class="btn" id="loadjson">Load JSON</button><button class="btn" id="dljson">Download backup</button><button class="btn" id="openjsonbtn">Open backup</button><input type="file" id="openjson" accept=".json,application/json" hidden><button class="btn" id="blankjson">Start a blank studio</button><span class="muted small" id="jsonstate"></span></div>
   </details>
 </div>
 
@@ -1160,6 +1160,7 @@ const STARTER={"gear":[{"bal":false,"fx":false,"id":"mpc","ins":[{"id":"mpcrec",
 const useCfg=v=>{ cfg=JSON.parse(JSON.stringify(v)); selected=null; refresh(true); scheduleSave(); };
 document.getElementById("dljson").onclick=()=>{ if(!cfg) return; const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([JSON.stringify(cfg,null,1)],{type:"application/json"})); a.download="patchbay-studio.json"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); };
+document.getElementById("openjsonbtn").onclick=()=>document.getElementById("openjson").click();
 document.getElementById("openjson").onchange=async e=>{ const st=document.getElementById("jsonstate"), f=e.target.files[0]; if(!f) return;
   try{ const v=JSON.parse(await f.text()); if(!v||!v.studio||!Array.isArray(v.gear)) throw 0; useCfg(v); st.textContent="Opened "+f.name+"."; }
   catch(err){ st.textContent="That file isn't a studio backup."; } e.target.value=""; };
