@@ -4,7 +4,7 @@ A free, browser-based planner for laying out studio patchbays.
 
 List your gear, give each output a priority, pick your mixer and audio interface, and the planner lays out normalled patchbays for you: which jack goes where, what is half-normal, normal or thru, and how to patch common jobs like sampling, resampling the mix or running an effect on an insert.
 
-**Open the planner:** https://prh78.github.io/patchbay-planner/
+**Open the planner:** https://projectninetyfive.github.io/patchbay-planner/
 
 ## What it does
 
