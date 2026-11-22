@@ -1,0 +1,1659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Patchbay Planner</title>
+<meta name="description" content="Free patchbay planner for home studios: list your gear, set priorities and get a labelled, normalled patchbay layout with wiring sheets and signal paths. Runs in your browser.">
+<meta property="og:title" content="Patchbay Planner">
+<meta property="og:description" content="List your gear and get a labelled, normalled patchbay layout. Free, runs in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: generated landscape 1U bays on top (the answer), then gear list, studio settings, Ask Claude, import/export. Faceplates use fixed hardware colours in both themes. */
+:root{
+  --bg:#e9e7e2; --ink:#1f2327; --muted:#5d6268; --rule:#cfccc5; --card:#f6f5f2; --field:#ffffff;
+  --panel:#24272b; --panel-edge:#3a3e44; --silk:#e6e3da; --silk-dim:#9da1a6; --strip:#f1eee4; --strip-ink:#202326;
+  --hn:#2f9c8f; --n:#d99a2b; --t:#7b838c; --sel:#4f7fd6; --warn:#b4572c; --ok:#2f7d4f;
+  --cord1:#d4553f; --cord2:#3f7fd4; --cord3:#8a5bd0; --cord4:#2f9c5a;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#16181b; --ink:#e7e5e0; --muted:#a2a6ab; --rule:#2e3237; --card:#1e2125; --field:#16181b;
+  --panel:#2a2e33; --panel-edge:#454a51; --silk:#e6e3da; --silk-dim:#9da1a6; --strip:#e8e4d8; --strip-ink:#202326;
+  --hn:#3fb5a6; --n:#e5aa3e; --t:#8d959e; --sel:#6f9bea; --warn:#e98a5c; --ok:#5cc28a; --cord1:#e5664f; --cord2:#5b95e6; --cord3:#a07ae0; --cord4:#45b06f; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#16181b; --ink:#e7e5e0; --muted:#a2a6ab; --rule:#2e3237; --card:#1e2125; --field:#16181b;
+  --panel:#2a2e33; --panel-edge:#454a51; --silk:#e6e3da; --silk-dim:#9da1a6; --strip:#e8e4d8; --strip-ink:#202326;
+  --hn:#3fb5a6; --n:#e5aa3e; --t:#8d959e; --sel:#6f9bea; --warn:#e98a5c; --ok:#5cc28a; --cord1:#e5664f; --cord2:#5b95e6; --cord3:#a07ae0; --cord4:#45b06f; color-scheme:dark }
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1440px;margin:0 auto;padding-block:26px 48px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:grid;gap:26px}
+header{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:end;justify-content:space-between}
+h1{font-family:var(--display);font-weight:700;font-size:2.3rem;line-height:1;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:700;font-size:1.45rem;margin:0;letter-spacing:.01em}
+.sub{color:var(--muted);margin:6px 0 0;max-width:72ch}
+.pill{font:600 .85rem var(--display);letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid var(--rule);color:var(--muted);background:var(--card)}
+.pill.ok{color:var(--ok);border-color:var(--ok)} .pill.bad{color:var(--warn);border-color:var(--warn)}
+section{display:grid;gap:12px}
+.sechead{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;color:var(--muted);align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:20px;height:6px;border-radius:3px;display:inline-block}
+.sw.hn{background:linear-gradient(90deg,var(--hn) 60%,transparent 60%)} .sw.n{background:var(--n)} .sw.t{border:1px dashed var(--t);height:4px}
+.ring{width:12px;height:12px;border-radius:50%;display:inline-block;border:3px solid var(--muted)} .ring.u{border-style:dotted}
+.stage{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;min-width:0;max-width:100%;padding-bottom:6px}
+.stage-inner{position:relative;width:max-content;min-width:100%;padding-bottom:48px}
+.baystack{display:grid;gap:16px}
+svg.cords{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.cords path{fill:none;stroke-width:5;stroke-linecap:round;opacity:.92}
+.chips{display:grid;gap:10px}
+.chipgroup{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.want>summary{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;list-style:none} .want>summary::-webkit-details-marker{display:none}
+.want>summary::before{content:"▸";font-size:1rem;width:1em} .want[open]>summary::before{content:"▾"}
+.wanth{font:700 1.3rem var(--display);letter-spacing:.02em} .want[open]>summary{margin-bottom:8px}
+.want .chips{display:grid;gap:0}
+.usecase{border-top:1px solid var(--rule);padding:7px 0 7px 1.2em} .usecase:last-child{border-bottom:1px solid var(--rule)}
+.usecase>summary{font:600 1rem var(--display);letter-spacing:.03em;text-transform:uppercase} .usecase .chipgroup{padding:8px 0 4px} .usecase .chip[data-p]{border-color:var(--hn)}
+.ucn{font-size:.8rem;color:var(--muted);margin-left:4px} .want .drawbar{margin-top:10px}
+.secfold>summary{list-style:none;cursor:pointer;align-items:center} .secfold>summary::-webkit-details-marker{display:none}
+.secfold>summary h2::before{content:"▸";display:inline-block;width:1.1em;font-size:1rem;vertical-align:middle} .secfold[open]>summary h2::before{content:"▾"}
+.secfold>summary{justify-content:flex-start;flex-wrap:nowrap} .secfold>summary h2{flex:none;white-space:nowrap} .secfold>summary>span.muted{flex:0 1 auto;min-width:0} .secfold>summary .fields{margin-left:auto} .secfold:not([open])>summary .fields{display:none} .foldbody{display:grid;gap:12px;margin-top:12px} .want .patchnote{margin-top:10px} .usecase .patchnote{margin:6px 0 4px} .quick .want{display:grid;gap:6px}
+.chiplabel{font:700 .82rem var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);min-width:9.5rem}
+.chip{font:600 .9rem var(--display);letter-spacing:.03em;text-transform:uppercase;padding:6px 11px;border-radius:999px;border:1px solid var(--rule);background:var(--card);color:var(--ink);cursor:pointer}
+.chip.fx{border-color:var(--n)} .chip.send{border-color:var(--hn)} .chip.task{border-style:dashed}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+.patchnote{color:var(--ink);max-width:90ch;margin-top:10px}
+.patchnote ol,.patchnote ul{margin:.4em 0 0;padding-left:1.3em;display:grid;gap:4px}
+.patchnote .chg{color:var(--muted);font-size:.9rem;margin-top:8px}
+.col.hl{background:rgba(229,170,62,.20);box-shadow:inset 0 0 0 1px rgba(229,170,62,.55)}
+.col.hl.sel{background:rgba(111,155,234,.22)}
+.jack.on{border-color:var(--sel);box-shadow:0 0 0 2px rgba(111,155,234,.35)}
+.link.broken{opacity:.18} .link.split{box-shadow:0 0 0 2px rgba(63,181,166,.35)}
+.bay{background:var(--panel);border:1px solid var(--panel-edge);border-radius:6px;padding:10px 32px 12px;position:relative;box-shadow:0 6px 14px rgba(0,0,0,.18)}
+.bay::before,.bay::after{content:"";position:absolute;top:50%;width:10px;height:22px;margin-top:-11px;border-radius:5px;background:var(--bg)}
+.bay::before{left:11px}.bay::after{right:11px}
+.bayhead{display:flex;gap:16px;justify-content:space-between;color:var(--silk);font-family:var(--display);letter-spacing:.08em;text-transform:uppercase;font-size:.9rem;margin-bottom:6px}
+.bayhead b{font-size:1.05rem} .bayhead small{color:var(--silk-dim);font-weight:500}
+.row{display:grid;gap:0}
+.col{display:grid;grid-template-rows:auto 34px 28px 12px 28px 34px auto;justify-items:center;align-items:center;padding:0 2px;border-radius:4px;cursor:pointer}
+.col.sel{background:rgba(111,155,234,.18)} .col.empty{cursor:default;opacity:.45}
+.num{font:600 .74rem var(--display);color:var(--silk-dim)}
+.strip{background:var(--strip);color:var(--strip-ink);width:51px;height:32px;border-radius:2px;font:600 .64rem/1.02 var(--display);text-align:center;display:flex;align-items:center;justify-content:center;padding:0 2px;overflow:hidden;text-transform:uppercase;word-break:break-word}
+.strip.blank{background:transparent;border:1px dashed var(--panel-edge)}
+.jack{width:22px;height:22px;border-radius:50%;background:#101214;border:4px solid #b9bcc0;padding:0}
+.jack.u{border-style:dotted} .jack.none{border-color:var(--panel-edge);background:transparent}
+.link{width:4px;height:12px;border-radius:2px}
+.link.n{background:var(--n)} .link.hn{background:linear-gradient(180deg,var(--hn) 0 55%,transparent 55%)} .link.t{border-left:2px dashed var(--t);width:0}
+.mode{font:700 .66rem var(--display);letter-spacing:.1em;padding:1px 5px;border-radius:3px;color:#111;margin-top:3px}
+.mode.hn{background:var(--hn)}.mode.n{background:var(--n)}.mode.t{background:var(--t);color:#fff}
+.col:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+.panel{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:16px 18px;display:grid;gap:10px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px} .pairhint{margin:0} #detail[hidden]{display:none}
+.kv dt{font:600 .78rem var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)} .kv dd{margin:0}
+.muted{color:var(--muted)} .small{font-size:.88rem}
+ul.plain{margin:0;padding-left:1.1em;display:grid;gap:3px}
+.warn li{color:var(--warn)}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+td,th{padding:5px 8px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+th{font:600 .78rem var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+td.n{text-align:right;font-variant-numeric:tabular-nums;width:4em}
+button.btn{font:600 .92rem var(--display);letter-spacing:.04em;text-transform:uppercase;padding:7px 12px;border-radius:6px;border:1px solid var(--rule);background:var(--card);color:var(--ink);cursor:pointer}
+button.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.btn:disabled{opacity:.45;cursor:not-allowed}
+button.icon{border:1px solid var(--rule);background:var(--field);color:var(--ink);border-radius:5px;width:28px;height:28px;cursor:pointer;font-size:.9rem;line-height:1}
+input,select,textarea{font:inherit;font-size:.92rem;color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:5px;padding:4px 7px;min-width:0}
+input[type=number]{width:4.5em}
+label.f{display:grid;gap:3px;font:600 .78rem var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+label.f input,label.f select{font-family:var(--body);letter-spacing:0;text-transform:none;font-weight:400}
+.fields{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
+.gearlist{display:grid;gap:10px}
+.libbox{display:grid;gap:6px} .libpick{display:grid;gap:6px}
+.combo{position:relative;display:flex;gap:10px;flex-wrap:wrap} .combo .libq{flex:1 1 280px}
+.liblist{position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:min(340px,60vh);overflow-y:auto;overscroll-behavior:contain;background:var(--card);border:1px solid var(--rule);border-radius:8px;z-index:30;box-shadow:0 10px 24px rgba(0,0,0,.22);padding:4px 0}
+.libpick.up .liblist{top:auto;bottom:calc(100% + 4px)}
+.libgrp{font:600 .74rem var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:8px 12px 2px;position:sticky;top:0;background:var(--card)}
+.libopt{padding:6px 12px;cursor:pointer} .libopt:hover,.libopt.act{background:rgba(111,155,234,.18)}
+.libnone{padding:10px 12px;color:var(--muted)} .warnt{color:var(--warn)}
+.unit{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:10px 12px;display:grid;gap:8px}
+.col{position:relative}
+.lvbadge{position:absolute;top:14px;right:0;width:13px;height:13px;border-radius:50%;font:700 9px/13px var(--display);text-align:center;color:#111}
+.lvbadge.warn{background:var(--warn);color:#fff} .lvbadge.info{background:var(--silk-dim)}
+.pin{position:absolute;top:14px;left:1px;font-size:9px;color:var(--sel)}
+.mode.ovr{outline:2px solid var(--sel);outline-offset:1px}
+.lvlist{display:grid;gap:4px;margin:6px 0 0} .lvlist .warn{color:var(--warn)} .lvlist .info{color:var(--muted)}
+.lvsum{font:inherit;font-weight:700;letter-spacing:0}
+.ovr{border-top:1px solid var(--rule);padding-top:8px;display:grid;gap:6px}
+.unithead{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.unit .unitbody{display:grid;gap:8px;border-top:1px solid var(--rule);padding-top:8px}
+.iconwrap{display:inline-flex;width:52px;height:36px;align-items:center;justify-content:center;border-radius:6px;background:var(--field);border:1px solid var(--rule);color:var(--ink)}
+.devicon{width:46px;height:31px}
+.sum{flex:1 1 220px} .mv{display:inline-flex;gap:6px;margin-left:auto}
+.libopt{display:flex;align-items:center;gap:10px} .libicon{width:30px;height:20px;flex:none;color:var(--muted)}
+.unithead .name{font-weight:700;flex:0 1 220px;min-width:140px}
+.unithead .short{width:7em}
+.ports{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px 18px}
+.portlist{display:grid;gap:5px;align-content:start}
+.port{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.port input.lbl{flex:1 1 110px}
+.portlist h4{margin:0;font:600 .78rem var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.addrow{justify-self:start;font-size:.85rem;background:none;border:none;color:var(--sel);cursor:pointer;padding:2px 0}
+.role-note{font-size:.84rem;color:var(--muted)}
+.quick{display:grid;gap:6px} .qhead{font:700 1rem var(--display);letter-spacing:.06em;text-transform:uppercase;align-self:center;margin-right:4px}
+.studiobar{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:end;margin:10px 0 18px} .sharebox{display:grid;gap:8px;margin-bottom:18px} .sharebox textarea{min-height:0}
+.empty-state{border:1px dashed var(--rule);border-radius:8px;padding:22px;display:grid;gap:10px;justify-items:start;color:var(--muted)}
+.ask-out{white-space:pre-wrap;min-height:2.5em} .ask-out:has(.recs){white-space:normal}
+.recs{display:grid;gap:8px;margin:6px 0;padding-left:1.4em} .rec{padding:4px 0} .rec>div{display:inline} .rec .btn,.rec>.muted,.rec>.ok{margin-left:10px;vertical-align:middle} .rec>.ok{color:var(--ok);font-weight:700}
+textarea.note{font:inherit;font-size:.92rem;min-height:3.2em}
+textarea{width:100%;min-height:9em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.8rem}
+details summary{cursor:pointer;font:600 1rem var(--display);letter-spacing:.04em}
+.undogrp{display:inline-flex;gap:6px;margin-left:auto} .btn:disabled{opacity:.45;cursor:default}
+.viewtog{display:inline-flex;gap:6px} [data-view][aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip.mine{border-color:var(--sel)} .drawbar:empty{display:none} .drawbar{align-items:end}
+.jack.pend,.rcell.pend{box-shadow:0 0 0 4px var(--n);border-color:var(--n)}
+.rackmode{width:100%;min-width:0} .racktabs{margin-bottom:8px}
+.rackbay{background:var(--panel);color:var(--silk);border-radius:8px;padding:10px;display:grid;gap:4px}
+.rackhead{display:flex;justify-content:space-between;font:600 1.1rem var(--display);letter-spacing:.04em;padding:0 4px 4px}
+.rrow{position:relative;display:grid;grid-template-columns:2.2em minmax(0,1fr) 3.2em minmax(0,1fr);gap:6px;align-items:center;padding:5px 4px;border-radius:6px;cursor:pointer;font-size:1rem}
+.rrow.rhead{cursor:default;font:600 .75rem var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--silk-dim)}
+.rrow.empty{cursor:default;opacity:.45} .rrow.sel{outline:2px solid var(--sel)} .rrow.hl{background:rgba(229,170,62,.28)}
+.rrow .rn{font:700 1rem var(--display);color:var(--silk-dim);text-align:right}
+.rcell{background:var(--strip);color:var(--strip-ink);border-radius:4px;padding:6px 8px;font:600 .95rem/1.15 var(--display);text-transform:uppercase;min-height:2.4em;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rcell.none{background:transparent;color:var(--silk-dim);justify-content:center}
+.rcell.on{box-shadow:0 0 0 3px var(--sel)}
+.rrow .mode{justify-self:center} .rrow .lvbadge{top:4px;right:2px}
+.cdot{display:inline-grid;place-items:center;width:1.4em;height:1.4em;border-radius:50%;color:#fff;font:700 .8rem var(--display);margin-left:auto}
+.mlines{display:grid;gap:8px;margin:10px 0} .mline{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.mchip{padding:4px 10px;border-radius:6px;background:var(--field);border:1px solid var(--rule);font-size:.92rem} .mchip.src{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.arr{color:var(--muted);font-size:.85rem} .gs{margin:6px 0 0}
+@media (max-width:560px){ .undogrp{margin-left:0} }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Patchbay Planner</h1>
+      <p class="sub">List your gear, give each output a priority, and the planner lays out normalled patchbays around your mixer and interface. Change anything and the bays redraw.</p>
+    </div>
+    <span class="pill" id="savepill">Loading studio…</span>
+  </header>
+  <div class="studiobar">
+    <label class="f">Studio<select id="studiosel" aria-label="Choose a studio"></select></label>
+    <label class="f">Name<input id="studioname" aria-label="Studio name" placeholder="My studio" style="width:14em"></label>
+    <button class="btn" id="stnew">New</button><button class="btn" id="stdup">Duplicate</button><button class="btn" id="stdel">Delete</button><button class="btn" id="stshare">Share…</button><span class="undogrp"><button class="btn" id="undo" title="Undo (Ctrl/Cmd+Z)" disabled>↶ Undo</button><button class="btn" id="redo" title="Redo (Ctrl/Cmd+Shift+Z)" disabled>↷ Redo</button></span>
+  </div>
+  <div class="panel sharebox" id="sharebox" hidden>
+    <h2>Share a studio</h2>
+    <label class="f">Share code for this studio<textarea id="sharecode" readonly rows="3"></textarea></label>
+    <div class="fields"><button class="btn" id="sharecopy">Copy code</button><span class="muted small">Send it to anyone with this planner. Pasting it in opens a copy, so your own studio stays as it is.</span></div>
+    <label class="f" id="sharelink" hidden>Or send this link<input readonly></label>
+    <label class="f">Open a shared studio<textarea id="sharein" rows="2" placeholder="Paste a share code here"></textarea></label>
+    <div class="fields"><button class="btn primary" id="shareopen">Open as a new studio</button><span class="small muted" id="sharestate"></span></div>
+  </div>
+
+  <section id="bays-sec">
+    <div class="sechead">
+      <h2>Generated bays</h2>
+      <div class="viewtog" role="group" aria-label="Bay view"><button class="chip" data-view="panel">Front panel</button><button class="chip" data-view="rack">List (phone)</button></div>
+      <div class="legend">
+        <span><i class="sw hn"></i>Half-normal</span><span><i class="sw n"></i>Normal</span><span><i class="sw t"></i>Thru</span>
+        <span><i class="sw" style="background:rgba(229,170,62,.55)"></i>Already wired for this path</span><span><i class="ring"></i>Balanced rear</span><span><i class="ring u"></i>Unbalanced rear</span>
+      </div>
+    </div>
+    <div class="panel quick" id="auto"><details class="want"><summary><span class="wanth">Quick setup</span><span class="muted small">Auto-arrange your bays for a common way of working</span></summary>
+      <div class="fields"><label class="f">Use case<select id="autouse"></select></label><button class="btn primary" id="autobtn">Auto-arrange my bays</button><button class="btn" id="autoundo" hidden>Undo</button></div>
+      <span class="small muted" id="autostate" aria-live="polite">Sets every output's priority, orders your gear and fits everything important on the bays. Use it to start, or to get back to a working layout after tweaking. Hand changes are cleared, and Undo puts everything back.</span>
+    </details></div>
+    <div class="panel paths" id="paths-sec">
+      <details class="want" id="want"><summary><span class="wanth">I want to…</span><span class="muted small">Pick a job to see the cords for it, or draw your own patch</span></summary>
+      <div class="chips" role="group" aria-label="Suggested signal paths" id="chips"></div>
+      <div class="fields drawbar" id="drawbar"></div>
+      <div class="patchnote" id="patchnote" aria-live="polite"></div>
+      </details>
+    </div>
+    <p class="pairhint muted small">Click a pair to see what's behind it, check its levels, or move it. Click it again to close.</p>
+    <div class="stage"><div class="stage-inner" id="inner"><div class="baystack" id="bays"></div><svg class="cords" id="cords" aria-hidden="true"></svg></div></div>
+    <div class="grid2">
+      <div class="panel" id="detail" hidden></div>
+      <div class="panel" id="summary"></div>
+    </div>
+  </section>
+
+  <section>
+    <details class="secfold" data-fold="gear" open><summary class="sechead"><h2>Gear</h2><span class="muted small">Order matters within a priority: earlier units get channels and sampler feeds first.</span><span class="fields"><button class="btn" data-all="open">Expand all</button><button class="btn" data-all="close">Collapse all</button></span></summary><div class="foldbody">
+    <div class="panel libbox">
+      <label class="f">Add from the gear library</label>
+      <div class="libpick" data-lib="top"></div>
+    </div>
+    <div class="gearlist" id="gear"></div>
+    <div class="libpick bottom" data-lib="bottom"></div>
+    <div class="fields"><span class="muted small" style="align-self:center">Or add a blank unit:</span>
+      <button class="btn" data-add="source">Add sound source</button>
+      <button class="btn" data-add="sampler">Add sampler</button>
+      <button class="btn" data-add="send">Add send effect</button>
+      <button class="btn" data-add="insert">Add insert processor</button>
+      <button class="btn" data-add="master">Add mix processor</button>
+    </div>
+    </div></details>
+  </section>
+
+  <section>
+    <details class="secfold" data-fold="studio" open><summary class="sechead"><h2>Studio</h2><span class="muted small">Your patchbays, mixer and interface.</span></summary><div class="foldbody">
+    <div class="grid2" id="studio"></div>
+    </div></details>
+  </section>
+
+  <section>
+    <details class="secfold" data-fold="midi" open><summary class="sechead"><h2>MIDI and sync</h2><span class="muted small">A suggested MIDI chain: who sends clock, what plugs into what, and each unit's channel.</span></summary><div class="foldbody">
+    <div class="panel" id="midi"></div>
+    </div></details>
+  </section>
+
+  <section>
+    <details class="secfold" data-fold="cables" open><summary class="sechead"><h2>Cables</h2><span class="muted small">What to buy to wire the back of the bays, with lengths from where each unit sits.</span></summary><div class="foldbody">
+    <div class="panel" id="cables"></div>
+    </div></details>
+  </section>
+
+  <section class="panel" id="ask" hidden>
+    <h2>Ask Claude about this layout</h2>
+    <p class="muted small" style="margin:0">Sends your gear list and the generated bays to Claude for a second opinion: what to swap, what to normal differently, what will be awkward in practice. It uses your own Claude usage.</p>
+    <div class="fields"><button class="btn primary" id="askbtn">Review my bays</button><span class="muted small" id="askstate"></span></div>
+    <div class="ask-out" id="askout"></div>
+  </section>
+
+  <details class="panel">
+    <summary>Import or export the studio as JSON</summary>
+    <p class="muted small" style="margin:0">This page saves in this browser only. Download a backup to move your studio to another computer or browser, and open it there. Paste JSON here and press Load to replace the current studio.</p>
+    <textarea id="json" aria-label="Studio JSON" spellcheck="false"></textarea>
+    <div class="fields"><button class="btn" id="copyjson">Copy JSON</button><button class="btn" id="loadjson">Load JSON</button><button class="btn" id="dljson">Download backup</button><label class="btn" style="display:inline-flex;align-items:center">Open backup<input type="file" id="openjson" accept=".json,application/json" hidden></label><button class="btn" id="blankjson">Start a blank studio</button><span class="muted small" id="jsonstate"></span></div>
+  </details>
+</div>
+
+<footer class="muted small" style="max-width:1200px;margin:24px auto 32px;padding:0 16px;text-align:center">
+  Patchbay Planner is free and open source. It runs entirely in your browser: your studio is saved on this device only and nothing is uploaded. Use Download backup to keep a copy.
+</footer>
+<script>
+const ROLE={
+  source:{name:"Sound source",note:"Outputs go to channels by priority."},
+  sampler:{name:"Sampler",note:"Outputs go to channels, and inputs get fed from spare interface outputs so you can resample."},
+  send:{name:"Send effect",note:"Fed from an aux send, returned on an effect return."},
+  insert:{name:"Insert processor",note:"Normalled into the insert of the channel its target output lands on."},
+  master:{name:"Mix processor",note:"Inputs and outputs sit on the bay as thru points, ready to patch across the mix."}
+};
+const PRI={1:"1 · always on a channel",2:"2 · channel or return if free",3:"3 · patch only"};
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const BLANK={version:1,studio:{bayName:"48-point patchbay",bayCount:2,pairsPerBay:24,
+  mixer:{name:"Mixer",short:"",mono:8,stereo:4,monoReturns:4,stereoReturns:2,lineIn:false,auxes:4,groups:4,insertsOnBay:1,mainsXLR:true},
+  iface:{name:"Interface",short:"IF",ins:"In 1, In 2, In 3, In 4",outs:"Out 3, Out 4"}},gear:[]};
+
+let cfg=null, layout=null, selected=null, db=null, saveTimer=null, lastSaved="";
+
+function defaultUnit(role){
+  const g={id:uid(),name:"New "+ROLE[role].name.toLowerCase(),short:"",role,bal:role==="insert"||role==="master",outs:[],ins:[],target:""};
+  if(role==="source"||role==="sampler") g.outs.push({id:uid(),label:"Out",st:false,pri:1});
+  if(role==="sampler") g.ins.push({id:uid(),label:"Rec in",st:false});
+  if(role==="send"){g.ins.push({id:uid(),label:"In",st:false});g.outs.push({id:uid(),label:"Out",st:true,pri:1});}
+  if(role==="insert"){g.ins.push({id:uid(),label:"In",st:false});g.outs.push({id:uid(),label:"Out",st:false,pri:1});}
+  if(role==="master"){g.ins.push({id:uid(),label:"In",st:true});}
+  return g;
+}
+
+/* ---------- device icons ---------- */
+// 48×32 line drawings in currentColor; each loosely matches a kind of box.
+const ICONS={
+ pads:{name:"Pad sampler (MPC)",svg:`<rect x="3" y="3" width="42" height="26" rx="2"/><rect x="7" y="7" width="14" height="7" rx="1"/><circle cx="10" cy="22" r="2"/><circle cx="17" cy="22" r="2"/>${[0,1,2,3].map(c=>[0,1,2].map(r=>`<rect x="${25+c*4.5}" y="${7+r*7}" width="3.5" height="5" rx=".8"/>`).join("")).join("")}`},
+ rack:{name:"Rack sampler / module",svg:`<rect x="2" y="9" width="44" height="14" rx="1.5"/><circle cx="5" cy="16" r=".9"/><circle cx="43" cy="16" r=".9"/><rect x="9" y="12" width="13" height="5" rx=".8"/><rect x="9" y="19" width="4" height="1.6"/><path d="M26 13h12M26 16h12M26 19h8"/><rect x="31" y="11.5" width="0" height="0"/>`},
+ keys:{name:"Keyboard synth",svg:`<rect x="2" y="7" width="44" height="20" rx="2"/><rect x="6" y="10" width="10" height="4" rx=".6"/><path d="M20 12h20"/>${Array.from({length:11},(_,i)=>`<path d="M${6+i*3.6} 17v10"/>`).join("")}${[1,2,4,5,6,8,9].map(i=>`<rect x="${5+i*3.6}" y="17" width="2" height="5" fill="currentColor"/>`).join("")}`},
+ synth:{name:"Compact synth with knobs",svg:`<rect x="3" y="5" width="42" height="22" rx="2"/>${[0,1,2,3,4].map(i=>`<circle cx="${9+i*7.5}" cy="11" r="2.4"/>`).join("")}<path d="M7 17h34v7H7z"/>${[0,1,2,3,4,5,6,7].map(i=>`<path d="M${11.25+i*4.25} 17v7"/>`).join("")}`},
+ drum:{name:"Drum machine",svg:`<rect x="2" y="5" width="44" height="22" rx="2"/>${[0,1,2,3,4,5].map(i=>`<circle cx="${8+i*6.4}" cy="11" r="2"/>`).join("")}${Array.from({length:8},(_,i)=>`<rect x="${5+i*5}" y="18" width="3.4" height="5" rx=".6"/>`).join("")}`},
+ desktop:{name:"Desktop box / groovebox",svg:`<path d="M6 25 9 7h30l3 18z"/><rect x="13" y="10" width="10" height="5" rx=".8"/><circle cx="29" cy="12" r="2"/><circle cx="35" cy="12" r="2"/>${[0,1,2,3,4].map(i=>`<rect x="${11+i*5.6}" y="18" width="3.6" height="3.6" rx=".6"/>`).join("")}`},
+ pedal:{name:"Effects pedal",svg:`<rect x="12" y="2" width="24" height="28" rx="3"/><circle cx="18" cy="8" r="2.2"/><circle cx="24" cy="8" r="2.2"/><circle cx="30" cy="8" r="2.2"/><rect x="17" y="14" width="14" height="4" rx=".8"/><circle cx="24" cy="24.5" r="3.2"/>`},
+ rackfx:{name:"Rack effects unit",svg:`<rect x="2" y="9" width="44" height="14" rx="1.5"/><circle cx="5" cy="16" r=".9"/><circle cx="43" cy="16" r=".9"/><rect x="9" y="12" width="11" height="5" rx=".8"/><path d="M11 14.5h2m1 0h2m1 0h1"/><circle cx="25" cy="16" r="2.2"/><circle cx="31" cy="16" r="2.2"/><circle cx="37" cy="16" r="2.2"/>`},
+ comp:{name:"Compressor / dynamics",svg:`<rect x="2" y="9" width="44" height="14" rx="1.5"/><circle cx="5" cy="16" r=".9"/><circle cx="43" cy="16" r=".9"/><rect x="9" y="11" width="12" height="10" rx="1"/><path d="M11 19a5 5 0 0 1 8 0M15 19l3-5"/><circle cx="26" cy="16" r="2.2"/><circle cx="32" cy="16" r="2.2"/><circle cx="38" cy="16" r="2.2"/>`},
+ master:{name:"Mastering / mix processor",svg:`<rect x="2" y="9" width="44" height="14" rx="1.5"/><circle cx="5" cy="16" r=".9"/><circle cx="43" cy="16" r=".9"/>${[0,1,2,3,4,5].map(i=>`<path d="M${10+i*2.2} 20v-${[5,7,6,8,4,6][i]}"/>`).join("")}<rect x="25" y="12" width="9" height="4" rx=".6"/><circle cx="38.5" cy="16" r="2.4"/>`},
+ tape:{name:"Tape echo",svg:`<rect x="3" y="6" width="42" height="20" rx="2"/><circle cx="14" cy="14" r="5"/><circle cx="14" cy="14" r="1.2"/><circle cx="34" cy="14" r="5"/><circle cx="34" cy="14" r="1.2"/><path d="M14 19h20"/><circle cx="12" cy="23" r="1"/><circle cx="24" cy="23" r="1"/><circle cx="36" cy="23" r="1"/>`}
+};
+const ICON_RULES=[[/mpc/i,"pads"],[/sp-?12/i,"drum"],[/sp-404|digitakt|octatrack|tb-303|blofeld/i,"desktop"],[/tr-\d/i,"drum"],
+ [/space echo|re-201/i,"tape"],[/microcosm|bigsky|timeline|\bh9\b/i,"pedal"],[/finalizer|ssl|joemeek|aphex/i,"master"],
+ [/dbx|1176|la-2a|wa76|rnc|ds201|mdx/i,"comp"],
+ [/emax|asr-10|eps|sd-1|esq|\bm1\b|wavestation|dx7|jd-800|d-50|juno|jx-3p|prophet|ob-6|peak/i,"keys"],
+ [/sh-101|cz-|ms-20|minimoog|model d|subsequent|minilogue|bass station|polysix/i,"synth"],
+ [/matrix|xv-|jv-|tx81z|proteus|\bs-?\d{3,4}|vp-9000|quadraverb|midiverb|pcm|mx200|spx|h3000|sde|se-70|m3000/i,"rack"]];
+const ROLE_ICON={source:"synth",sampler:"rack",send:"rackfx",insert:"comp",master:"master"};
+function iconFor(g){
+  if(g.icon&&ICONS[g.icon]) return g.icon;
+  const hit=ICON_RULES.find(([re])=>re.test(g.name||""));
+  let k=hit?hit[1]:ROLE_ICON[g.role]||"rack";
+  if(k==="rack"&&g.role==="send") k="rackfx";
+  return k;
+}
+const iconSvg=(k,cls)=>`<svg class="${cls||"devicon"}" viewBox="0 0 48 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ICONS[k].svg}</svg>`;
+const openUnits=new Set();
+
+const lvlOf=g=>g.level||(g.bal?"pro":iconFor(g)==="pedal"?"inst":"consumer");
+const locOf=g=>g.loc||({rack:"rack",rackfx:"rack",comp:"rack",master:"rack",pedal:"floor"}[iconFor(g)]||"desk");
+const LVL={pro:"+4 dBu (pro)",consumer:"−10 dBV (consumer)",inst:"Instrument / pedal"};
+const LOC={rack:"In the rack, near the bay",desk:"On the desk or a stand",floor:"On the floor (pedalboard)"};
+const LEN={rack:"1 m",desk:"3 m",floor:"5 m"};
+function levelCheckBase(p){
+  const t=p.top,b=p.bot,out=[]; if(!t||!b||p.mode==="t") return out;
+  const tl=t.lvl,bl=b.lvl, hot=tl==="pro"||tl==="mix"||tl==="iface";
+  if(bl==="inst"&&tl!=="inst") out.push({sev:"warn",msg:`${b.f} expects instrument level, far lower than ${t.f}. Keep that output turned well down, or put a reamp box in between.`});
+  else if(bl==="consumer"&&hot) out.push({sev:"warn",msg:`${b.f} is a −10 dBV input fed from a hotter output. Set ${t.f} to −10 dBV if it has that option, or run it about 12 dB lower so ${b.f} doesn't clip.`});
+  if(tl==="inst"&&bl!=="inst") out.push({sev:"info",msg:`${t.f} is instrument level, so expect to add gain on ${b.f}.`});
+  else if(tl==="consumer"&&bl==="pro") out.push({sev:"info",msg:`${t.f} is a −10 dBV output into a +4 dBu input: add about 12 dB of gain there.`});
+  const bt=t.cab==="B"||t.cab==="X", bb=b.cab==="B"||b.cab==="X";
+  if(!["Y","S"].includes(t.cab)&&!["Y","S"].includes(b.cab)&&bt&&!bb) out.push({sev:"info",msg:`A balanced output feeds an unbalanced input here. It works through a TRS bay, but expect about 6 dB less level, and keep the unbalanced run short to avoid hum.`});
+  return out;
+}
+const LVLDB={pro:{nom:4,max:22,n:"+4 dBu"},consumer:{nom:-7.8,max:8,n:"−10 dBV"},inst:{nom:-20,max:3,n:"instrument level"}};
+const dbu=v=>`${v>0?"+":v<0?"−":""}${Math.abs(Math.round(v*10)/10)} dBu`;
+function gainStage(p,S){
+  const t=p.top,b=p.bot; if(!t||!b||p.mode==="t") return null;
+  const M=S.mixer||{}, I=S.iface||{}, mn=+(M.nominal??4);
+  const src=t.lvl==="mix"?{nom:mn,n:`the mixer's ${dbu(mn)} nominal`}:t.lvl==="iface"?{nom:4,n:"+4 dBu (interface output at its +4 setting)"}:LVLDB[t.lvl]||LVLDB.pro;
+  const bal=x=>x.cab==="B"||x.cab==="X", drop=bal(t)&&!bal(b)&&!["Y","S"].includes(t.cab)&&!["Y","S"].includes(b.cab)?6:0;
+  const clip=b.lvl==="mix"?(bal(b)?+(M.maxIn??22):+(M.maxInU??(+(M.maxIn??22)-6))):b.lvl==="iface"?+(I.maxIn??19):(LVLDB[b.lvl]||LVLDB.pro).max;
+  const lvl=src.nom-drop, head=Math.round(clip-lvl);
+  const txt=`${esc(t.f)} runs at about ${src.n||LVLDB[t.lvl]?.n||dbu(src.nom)}${drop?`, about ${dbu(lvl)} once it reaches the unbalanced input`:""}. ${esc(b.f)} clips around ${dbu(clip)}, which leaves <b>${head} dB of headroom</b>${head<6?", too little: turn the source down or use a pad":head<12?", workable if you keep peaks in check":head>30?", plenty, but you may need extra gain there":", comfortable"}.`;
+  return {src:lvl,clip,head,txt};
+}
+function levelCheck(p,S){ const out=levelCheckBase(p); p.gs=S?gainStage(p,S):null;
+  if(p.gs&&p.gs.head<6&&!out.some(x=>x.sev==="warn")) out.push({sev:"warn",msg:`Only ${p.gs.head} dB of headroom from ${p.top.f} into ${p.bot.f}: keep that output down or pad it.`});
+  return out; }
+function allocateDirect(c){
+  const S=c.studio, warn=[], notes=[], ifs=S.iface.short||S.iface.name, il=S.ifaceLoc||"rack";
+  const list=s=>String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
+  const dev=(g,o,side)=>({s:`${esc(g.short||g.name)}<br>${esc(o.label)}${side?" "+side:""}`,f:`${g.name} ${o.label}${side?" "+side:""}`,cab:g.bal?"B":"U",pri:+o.pri||1,grp:o.id,k:`o:${o.id}:${side||""}`,gid:g.id,lvl:lvlOf(g),loc:locOf(g)});
+  const devIn=(g,i,side)=>({s:`${esc(g.short||g.name)}<br>${esc(i.label)}${side?" "+side:""}`,f:`${g.name} ${i.label}${side?" "+side:""}`,cab:i.trs&&side?"S":g.bal?"B":"U",grp:i.id,k:`i:${i.id}:${side||""}`,gid:g.id,lvl:lvlOf(g),loc:locOf(g)});
+  const IFI=(l,x)=>({s:`${esc(ifs)}<br>${esc(l)}`,f:`${S.iface.name} ${l}${x||""}`,cab:"B",k:"ifi:"+l,lvl:"iface",loc:il});
+  const IFO=(l,x)=>({s:`${esc(ifs)}<br>${esc(l)}`,f:`${S.iface.name} ${l}${x||""}`,cab:"B",k:"ifo:"+l,lvl:"iface",loc:il});
+  const sides=o=>o.st?["L","R"]:[""];
+  const ins=list(S.iface.ins), outs=list(S.iface.outs), gear=c.gear||[];
+  const A=[],B=[],fTopA=[],fBotA=[],fTopB=[],fBotB=[],placed={},insOn={};
+  const srcs=[]; gear.forEach((g,gi)=>{ if(g.role==="source"||g.role==="sampler") g.outs.forEach((o,oi)=>srcs.push({g,o,k:(+o.pri||1)*1000+gi*20+oi})); });
+  srcs.sort((a,b)=>a.k-b.k);
+  const placeSrc=({g,o})=>{ const sd=sides(o);
+    if(ins.length>=sd.length){ sd.forEach(x=>A.push({top:dev(g,o,x),bot:IFI(ins.shift()),mode:"hn"})); placed[o.id]={type:"if"}; }
+    else { sd.forEach(x=>fTopA.push(dev(g,o,x))); if(+o.pri===1) warn.push(`${g.name} ${o.label} is priority 1 but no interface input is left. It's a thru point.`); } };
+  srcs.filter(x=>+x.o.pri===1).forEach(placeSrc);
+  // effects and inserts: an interface output feeds the unit, its output comes back on an interface input
+  const loop=(g,kind)=>{
+    g.ins.forEach(i=>sides(i).forEach(sd=>{ if(outs.length) B.push({top:IFO(outs.shift()),bot:devIn(g,i,sd),mode:"n"}); else { fBotB.push(devIn(g,i,sd)); warn.push(`No interface output left to feed ${g.name}.`); } }));
+    g.outs.forEach(o=>sides(o).forEach(sd=>{ if(ins.length) B.push({top:dev(g,o,sd),bot:IFI(ins.shift(),kind==="insert"?" (insert return)":" (effect return)"),mode:"n"}); else { fTopB.push(dev(g,o,sd)); warn.push(`No interface input left for ${g.name} to come back on.`); } }));
+  };
+  gear.filter(g=>g.role==="send").forEach(g=>loop(g,"send"));
+  gear.filter(g=>g.role==="insert").forEach(g=>loop(g,"insert"));
+  srcs.filter(x=>+x.o.pri===2).forEach(placeSrc);
+  srcs.filter(x=>+x.o.pri===3).forEach(({g,o})=>sides(o).forEach(x=>fTopA.push(dev(g,o,x))));
+  gear.filter(g=>g.role==="sampler").forEach(g=>g.ins.forEach(i=>sides(i).forEach(sd=>{
+    if(outs.length) B.push({top:IFO(outs.shift()," (set to match the sampler)"),bot:devIn(g,i,sd),mode:"n"}); else fBotA.push(devIn(g,i,sd)); })));
+  gear.filter(g=>g.role==="master").forEach(g=>{ g.ins.forEach(i=>sides(i).forEach(sd=>fBotB.push(devIn(g,i,sd)))); g.outs.forEach(o=>sides(o).forEach(sd=>fTopB.push(dev(g,o,sd)))); });
+  outs.forEach(l=>fTopB.push(IFO(l," (spare)")));
+  const spareIns=ins.map(l=>IFI(l," (spare)"));
+  notes.push("No mixer: every source records on its own interface input, and effects run from your DAW's sends and hardware inserts.");
+  return pack(c,{A,B,fTopA,fBotA,fTopB,fBotB,warn,notes,placed,insOn,spareIns});
+}
+/* ---------- allocation ---------- */
+function allocate(c){
+  const S=c.studio, M=S.mixer, warn=[], notes=[];
+  if(M.enabled===false) return allocateDirect(c);
+  const mx=M.short||M.name, ifs=S.iface.short||S.iface.name;
+  const list=s=>String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
+  const dev=(g,o,side)=>({s:`${esc(g.short||g.name)}<br>${esc(o.label)}${side?" "+side:""}`,f:`${g.name} ${o.label}${side?" "+side:""}`,cab:g.bal?"B":"U",pri:+o.pri||1,grp:o.id,k:`o:${o.id}:${side||""}`,gid:g.id,lvl:lvlOf(g),loc:locOf(g)});
+  const devIn=(g,i,side)=>({s:`${esc(g.short||g.name)}<br>${esc(i.label)}${side?" "+side:""}`,f:`${g.name} ${i.label}${side?" "+side:""}`,cab:i.trs&&side?"S":g.bal?"B":"U",grp:i.id,k:`i:${i.id}:${side||""}`,gid:g.id,lvl:lvlOf(g),loc:locOf(g)});
+  const mixJ=(s,f,cab)=>({s,f:`${M.name} ${f}`,cab:cab||"B",k:"m:"+s.replace(/<br>|\s/g,"").toUpperCase(),lvl:"mix",loc:S.mixerLoc||"desk"});
+  const sides=o=>o.st?["L","R"]:[""];
+
+  let monoS=[...Array(+M.mono||0)].map((_,i)=>i+1), stS=[...Array(+M.stereo||0)].map((_,i)=>i+1);
+  let mRet=[...Array(+M.monoReturns||0)].map((_,i)=>i+1), sRet=[...Array(+M.stereoReturns||0)].map((_,i)=>i+1);
+  let lineIn=!!M.lineIn;
+  const A=[], B=[], fTopA=[], fBotA=[], fTopB=[], fBotB=[], placed={};
+  const gear=c.gear||[];
+
+  // 1. reserve returns for send effects
+  const fxRet=[];
+  gear.filter(g=>g.role==="send").forEach(g=>g.outs.forEach(o=>{
+    if(o.st){
+      if(sRet.length){const r=sRet.shift();["L","R"].forEach(sd=>fxRet.push({top:dev(g,o,sd),bot:mixJ(`ST.RTN${r}<br>${sd}`,`stereo return ${r} ${sd}`),mode:"n"}));}
+      else if(mRet.length){const r=mRet.shift();fxRet.push({top:dev(g,o,"L"),bot:mixJ(`M.RTN ${r}`,`mono return ${r}`),mode:"n"});fTopB.push(dev(g,o,"R"));notes.push(`${g.name} returns in mono on mono return ${r}: no stereo return left.`);}
+      else {sides(o).forEach(sd=>fTopB.push(dev(g,o,sd)));warn.push(`No return left for ${g.name}. Its outputs are thru points; bring it back on a channel by patching.`);}
+    } else {
+      if(mRet.length){const r=mRet.shift();fxRet.push({top:dev(g,o,""),bot:mixJ(`M.RTN ${r}`,`mono return ${r}`),mode:"n"});}
+      else if(sRet.length){const r=sRet.shift();fxRet.push({top:dev(g,o,""),bot:mixJ(`ST.RTN${r}<br>L`,`stereo return ${r} L`),mode:"n"});}
+      else {fTopB.push(dev(g,o,""));warn.push(`No return left for ${g.name}.`);}
+    }
+  }));
+
+  // 2. sources by priority, then gear order
+  const srcs=[];
+  gear.forEach((g,gi)=>{ if(g.role==="source"||g.role==="sampler") g.outs.forEach((o,oi)=>srcs.push({g,o,k:(+o.pri||1)*1000+gi*20+oi})); });
+  srcs.sort((a,b)=>a.k-b.k);
+  for(const {g,o} of srcs){
+    const p=+o.pri||1;
+    if(p===3){sides(o).forEach(sd=>fTopA.push(dev(g,o,sd)));continue;}
+    if(o.st){
+      if(stS.length){const n=stS.shift();["L","R"].forEach(sd=>A.push({top:dev(g,o,sd),bot:mixJ(`ST${n} ${sd}`,`stereo channel ${n} ${sd}`),mode:"hn"}));placed[o.id]={type:"st",n};}
+      else if(lineIn){lineIn=false;["L","R"].forEach(sd=>A.push({top:dev(g,o,sd),bot:mixJ(`LINE IN<br>${sd}`,`Line In ${sd} (level only)`),mode:"n"}));notes.push(`${g.name} ${o.label} is on the Line In: level only, no EQ.`);}
+      else if(sRet.length){const r=sRet.shift();["L","R"].forEach(sd=>A.push({top:dev(g,o,sd),bot:mixJ(`ST.RTN${r}<br>${sd}`,`stereo return ${r} ${sd}`),mode:"n"}));}
+      else if(mRet.length>=2){const r1=mRet.shift(),r2=mRet.shift();A.push({top:dev(g,o,"L"),bot:mixJ(`M.RTN ${r1}`,`mono return ${r1}`),mode:"n"});A.push({top:dev(g,o,"R"),bot:mixJ(`M.RTN ${r2}`,`mono return ${r2}`),mode:"n"});notes.push(`${g.name} ${o.label} is split over two mono returns, so its stereo image depends on whether those returns pan.`);}
+      else if(monoS.length>=2){const n1=monoS.shift(),n2=monoS.shift();A.push({top:dev(g,o,"L"),bot:mixJ(`CH ${n1}`,`mono channel ${n1} line in`),mode:"hn"});A.push({top:dev(g,o,"R"),bot:mixJ(`CH ${n2}`,`mono channel ${n2} line in`),mode:"hn"});notes.push(`${g.name} ${o.label} is on mono channels ${n1} and ${n2}: pan ${n1} hard left and ${n2} hard right.`);}
+      else {["L","R"].forEach(sd=>fTopA.push(dev(g,o,sd)));if(p===1)warn.push(`${g.name} ${o.label} is priority 1 but no stereo input is left. It's a thru point.`);}
+    } else {
+      if(monoS.length){const n=monoS.shift();A.push({top:dev(g,o,""),bot:mixJ(`CH ${n}`,`mono channel ${n} line in`),mode:"hn"});placed[o.id]={type:"mono",n};}
+      else if(mRet.length){const r=mRet.shift();A.push({top:dev(g,o,""),bot:mixJ(`M.RTN ${r}`,`mono return ${r}`),mode:"n"});}
+      else if(p===1&&stS.length){const n=stS.shift();A.push({top:dev(g,o,""),bot:mixJ(`ST${n} L`,`stereo channel ${n} L (pan it centre)`),mode:"hn"});}
+      else {fTopA.push(dev(g,o,""));if(p===1)warn.push(`${g.name} ${o.label} is priority 1 but no mono input is left. It's a thru point.`);}
+    }
+  }
+
+  // 3. insert processors
+  const insUsed=new Set(), insOn={};
+  gear.filter(g=>g.role==="insert").forEach(g=>{
+    const pi=g.ins[0], po=g.outs[0]; if(!pi||!po) return;
+    const t=placed[g.target];
+    if(t&&t.type==="mono"&&!insUsed.has(t.n)){
+      insUsed.add(t.n); insOn[g.id]=t.n;
+      B.push({top:mixJ(`CH${t.n}<br>INS SND`,`ch ${t.n} insert send`,"Y"),bot:devIn(g,pi,""),mode:"n"});
+      B.push({top:dev(g,po,""),bot:mixJ(`CH${t.n}<br>INS RTN`,`ch ${t.n} insert return`,"Y"),mode:"n"});
+    } else {
+      fBotB.push(devIn(g,pi,""));fTopB.push(dev(g,po,""));
+      if(g.target) warn.push(`${g.name}'s target isn't on a mono channel with an insert, so it's left as thru points.`);
+    }
+  });
+  let extra=+M.insertsOnBay||0;
+  for(let n=1;n<=(+M.mono||0)&&extra>0;n++){ if(insUsed.has(n)) continue; extra--; insUsed.add(n);
+    B.push({top:mixJ(`CH${n}<br>INS SND`,`ch ${n} insert send`,"Y"),bot:mixJ(`CH${n}<br>INS RTN`,`ch ${n} insert return`,"Y"),mode:"hn"}); }
+
+  // 4. recording: mains + groups into interface inputs
+  const ins=list(S.iface.ins);
+  const mixOuts=[mixJ("MAIN L","main out L",M.mainsXLR?"X":"B"),mixJ("MAIN R","main out R",M.mainsXLR?"X":"B")];
+  for(let i=1;i<=(+M.groups||0);i++) mixOuts.push(mixJ(`GRP ${i}`,`group ${i} out`));
+  mixOuts.forEach(o=>{ if(ins.length){const l=ins.shift();B.push({top:o,bot:{s:`${esc(ifs)}<br>${esc(l)}`,f:`${S.iface.name} ${l}`,cab:"B",k:"ifi:"+l,lvl:"iface",loc:S.ifaceLoc||"rack"},mode:"hn"});} else fTopB.push(o); });
+  ins.forEach(l=>fBotB.push({s:`${esc(ifs)}<br>${esc(l)}`,f:`${S.iface.name} ${l}`,cab:"B",k:"ifi:"+l,lvl:"iface",loc:S.ifaceLoc||"rack"}));
+
+  // 5. aux sends into send effects
+  let aux=[...Array(+M.auxes||0)].map((_,i)=>i+1);
+  // A stereo-input effect normally takes one aux (mono send) into its left input; two auxes only if the unit asks for it.
+  gear.filter(g=>g.role==="send").forEach(g=>g.ins.forEach((i,n)=>sides(i).forEach(sd=>{
+    if(!g.stereoSend&&(sd==="R"||n>0)){ fBotB.push(devIn(g,i,sd)); return; }
+    if(aux.length){const a=aux.shift();B.push({top:mixJ(`AUX ${a}`,`aux ${a} send`),bot:devIn(g,i,sd),mode:"hn"});
+      if(sd==="L"&&!g.stereoSend) notes.push(i.trs?`${g.name} has one TRS input, wired to the bay with a stereo Y-cable. Aux ${a} feeds its left (tip) point, so set its input to mono. Patch the right (ring) point too and switch its input to stereo for a stereo feed.`:`${g.name} takes a mono send from aux ${a} into its left input, the usual way to feed a stereo effect. Its right input stays free to patch.`);}
+    else {fBotB.push(devIn(g,i,sd));warn.push(`Not enough aux sends for ${g.name}.`);}
+  })));
+  aux.forEach(a=>fTopB.push(mixJ(`AUX ${a}`,`aux ${a} send (spare)`)));
+  B.push(...fxRet);
+
+  // 6. sampler inputs fed from spare interface outputs
+  const outs=list(S.iface.outs);
+  gear.filter(g=>g.role==="sampler").forEach(g=>g.ins.forEach(i=>sides(i).forEach(sd=>{
+    if(outs.length){const l=outs.shift();B.push({top:{s:`${esc(ifs)}<br>${esc(l)}`,f:`${S.iface.name} ${l} (set to +4 dBu)`,cab:"B",k:"ifo:"+l,lvl:"iface",loc:S.ifaceLoc||"rack"},bot:devIn(g,i,sd),mode:"n"});}
+    else fBotA.push(devIn(g,i,sd));
+  })));
+  outs.forEach(l=>fTopB.push({s:`${esc(ifs)}<br>${esc(l)}`,f:`${S.iface.name} ${l}`,cab:"B",k:"ifo:"+l,lvl:"iface",loc:S.ifaceLoc||"rack"}));
+
+  // 7. mix processors: thru points
+  gear.filter(g=>g.role==="master").forEach(g=>{ g.ins.forEach(i=>sides(i).forEach(sd=>fBotB.push(devIn(g,i,sd)))); g.outs.forEach(o=>sides(o).forEach(sd=>fTopB.push(dev(g,o,sd)))); });
+
+  const spareIns=[...mRet.map(r=>mixJ(`M.RTN ${r}`,`mono return ${r} (spare)`)),...monoS.map(n=>mixJ(`CH ${n}`,`mono channel ${n} line in (spare)`)),
+    ...stS.flatMap(n=>["L","R"].map(sd=>mixJ(`ST${n} ${sd}`,`stereo channel ${n} ${sd} (spare)`))),
+    ...sRet.flatMap(r=>["L","R"].map(sd=>mixJ(`ST.RTN${r}<br>${sd}`,`stereo return ${r} ${sd} (spare)`))),
+    ...(lineIn?["L","R"].map(sd=>mixJ(`LINE<br>IN ${sd}`,`Line In ${sd} (spare)`)):[])];
+  return pack(c,{A,B,fTopA,fBotA,fTopB,fBotB,warn,notes,placed,insOn,spareIns});
+}
+function pack(c,{A,B,fTopA,fBotA,fTopB,fBotB,warn,notes,placed,insOn,spareIns}){
+  const S=c.studio;
+  // 8. fit to capacity: drop priority-3 outputs, then spare points
+  const cap=(+S.bayCount||1)*(+S.pairsPerBay||24);
+  const flexCount=()=>Math.max(fTopA.length,fBotA.length)+Math.max(fTopB.length,fBotB.length);
+  const offBay=[];
+  const dropGroup=(arr)=>{ for(let i=arr.length-1;i>=0;i--){ if((arr[i].pri||0)>=3||arr===fTopB){ const g=arr[i].grp; const gone=g?arr.filter(x=>x.grp===g):[arr[i]]; gone.forEach(x=>{offBay.push(x);arr.splice(arr.indexOf(x),1);}); return true; } } return false; };
+  let guard=0;
+  while(A.length+B.length+flexCount()>cap && guard++<200){
+    if(fTopA.length>fBotA.length && dropGroup(fTopA)) continue;
+    if(fTopB.length>fBotB.length && fTopB.length){offBay.push(fTopB.pop());continue;}
+    if(fBotA.length>fTopA.length){offBay.push(fBotA.pop());continue;}
+    if(fBotB.length>fTopB.length){offBay.push(fBotB.pop());continue;}
+    if(dropGroup(fTopA)) continue;
+    if(fTopB.length){offBay.push(fTopB.pop());continue;}
+    break;
+  }
+  const pairUp=(t,b)=>{const out=[];for(let i=0;i<Math.max(t.length,b.length);i++) out.push({top:t[i]||null,bot:b[i]||null,mode:"t"});return out;};
+  const bayA=[...A,...pairUp(fTopA,fBotA)], bayB=[...B,...pairUp(fTopB,fBotB)];
+  const total=bayA.length+bayB.length, P=+S.pairsPerBay||24, N=+S.bayCount||1;
+  if(total>cap) warn.push(`This needs ${total} pairs but ${N} × ${P} gives ${cap}. Add a bay or lower some priorities.`);
+
+  // 9. spare pairs: offer unused mixer inputs as patch-in points (bottom only)
+  const fillSpare=(bay,room)=>{ bay.forEach(p=>{ if(p.mode==="t"&&p.top&&!p.bot&&spareIns.length) p.bot=spareIns.shift(); });
+    while(room-->0&&spareIns.length) bay.push({top:null,bot:spareIns.shift(),mode:"t"}); };
+  if(N>=2 && bayA.length<=P && bayB.length<=P*(N-1)){ fillSpare(bayA,P-bayA.length); fillSpare(bayB,P*(N-1)-bayB.length); }
+  else if(total<cap) fillSpare(bayB,cap-total);
+  // 10. lay out into bays
+  let seq;
+  if(N>=2 && bayA.length<=P && bayB.length<=P*(N-1)) seq=[...bayA,...Array(P-bayA.length).fill(null),...bayB];
+  else seq=[...bayA,...bayB];
+  // manual overrides: normalling per pair, and pairs moved to a chosen slot
+  const NP=N*P; while(seq.length<NP) seq.push(null);
+  const ov=c.overrides||{}, modes=ov.modes||{}, pos=ov.pos||{};
+  seq.forEach(p=>{ if(!p) return; p.key=(p.top&&p.top.k||"-")+"|"+(p.bot&&p.bot.k||"-"); p.auto=p.mode; if(modes[p.key]&&p.top&&p.bot) p.mode=modes[p.key]; p.pinned=p.key in pos; });
+  Object.keys(pos).forEach(key=>{ const i=seq.findIndex(p=>p&&p.key===key), to=+pos[key]; if(i<0||!(to>=0&&to<NP)||i===to) return; [seq[i],seq[to]]=[seq[to],seq[i]]; });
+  seq.forEach(p=>{ if(p) p.lv=levelCheck(p,S); });
+  const bays=[]; for(let b=0;b<N;b++){ bays.push(seq.slice(b*P,b*P+P)); while(bays[b].length<P) bays[b].push(null); }
+  const overflow=seq.slice(N*P).filter(Boolean);
+
+  // cables
+  const cab={B:0,U:0,X:0,Y:0}, cabLen={};
+  seq.slice(0,NP).filter(Boolean).forEach(p=>[p.top,p.bot].forEach(j=>{ if(!j) return; cab[j.cab]=(cab[j.cab]||0)+1; const k=j.cab+"|"+(LEN[j.loc]||"3 m"); cabLen[k]=(cabLen[k]||0)+1; }));
+  const lvWarn=seq.slice(0,NP).filter(p=>p&&p.lv&&p.lv.length).length;
+  return {bays,warn,notes,offBay,overflow,cab,cabLen,lvWarn,used:seq.slice(0,NP).filter(Boolean).length,cap,placed,insOn};
+}
+
+/* ---------- suggested signal paths ---------- */
+let PATHS=[], current="none", IDX={};
+const COLORS=["--cord1","--cord2","--cord3","--cord4"];
+const sideKeys=(pre,x)=>(x.st?["L","R"]:[""]).map(sd=>`${pre}:${x.id}:${sd}`);
+function buildPaths(){
+  IDX={}; PATHS=[];
+  if(!layout||!cfg) return;
+  layout.bays.forEach((bay,b)=>bay.forEach((p,i)=>{ if(!p) return;
+    if(p.top&&p.top.k) IDX[p.top.k]={b,i,pos:"t",p}; if(p.bot&&p.bot.k) IDX[p.bot.k]={b,i,pos:"b",p}; }));
+  const has=k=>!!IDX[k], pr=k=>IDX[k]&&IDX[k].p;
+  const M=cfg.studio.mixer, gear=cfg.gear;
+  const sh=g=>esc(g.short||g.name), nm=g=>esc(g.name);
+  const desk=f=>esc(String(f||"").replace(M.name+" ",""));
+  const chName=f=>desk(f).replace(/ line in$/,"").replace(/ \(.*\)$/,"");
+  const where=k=>{const p=pr(k);return p&&p.bot?chName(p.bot.f):"its channel";};
+  const add=o=>{ const keys=[...o.cords.flat(),...(o.hl||[])]; if(keys.every(has)) PATHS.push(o); };
+  const into=(outs,ins)=>outs.length===2&&ins.length===2?[[outs[0],ins[0]],[outs[1],ins[1]]]:[[outs[0],ins[0]]];
+  const okOut=x=>sideKeys("o",x).every(has), okIn=x=>sideKeys("i",x).every(has);
+  const firstIn=g=>g.ins.find(okIn), firstOut=g=>g.outs.find(okOut);
+  const chOf=k=>(pr(k)&&pr(k).bot&&pr(k).bot.k)||"";
+  const monoOnCh=gear.flatMap(g=>(g.role==="source"||g.role==="sampler")?g.outs.filter(o=>!o.st&&okOut(o)&&/^m:CH\d+$/.test(chOf(`o:${o.id}:`))).map(o=>({g,o})):[]);
+  const synthOnCh=monoOnCh.filter(x=>x.g.role==="source");
+  const lastSt=+M.stereo||0, lastMono=+M.mono||0;
+  const auxOf=k=>pr(k)&&pr(k).top?desk(pr(k).top.f).replace(/ send.*$/,"").replace(/^aux/,"Aux"):"an aux";
+  const rtnOf=k=>pr(k)&&pr(k).bot?desk(pr(k).bot.f).replace(/ [LR]$/,""):"a return";
+  const extraLoops=[]; for(let n=1;n<=lastMono;n++){ const k=`m:CH${n}INSSND`; if(has(k)&&pr(k).bot&&pr(k).bot.k===`m:CH${n}INSRTN`) extraLoops.push(n); }
+  const spareAux=Object.keys(IDX).filter(k=>/^m:AUX\d+$/.test(k)&&IDX[k].p.mode==="t").sort((a,b)=>+a.slice(5)-+b.slice(5));
+
+  const samplers=gear.filter(g=>g.role==="sampler"&&firstIn(g));
+  const sends=gear.filter(g=>g.role==="send"&&firstIn(g)&&firstOut(g));
+  const inserts=gear.filter(g=>g.role==="insert"&&g.ins[0]&&g.outs[0]&&has(`i:${g.ins[0].id}:`)&&has(`o:${g.outs[0].id}:`));
+  const masters=gear.filter(g=>g.role==="master"&&firstIn(g));
+
+  // Everyday
+  add({id:"none",label:"Nothing patched",cords:[],note:`Every normal as wired. Sources play on their channels${inserts.some(g=>layout.insOn[g.id])?", insert units sit on their channels":""}, the mix and groups reach the ${esc(cfg.studio.iface.name)}${sends.length?", and the aux sends reach the effects":""}. Pick a path to see which cords it needs and which normals they break.`});
+  samplers.forEach((S,si)=>{
+    const pool=synthOnCh.length?synthOnCh:monoOnCh.filter(x=>x.g!==S); if(!pool.length) return;
+    const {g,o}=pool[si%pool.length], I=firstIn(S), ik=sideKeys("i",I);
+    add({id:`samp-${S.id}`,label:`Sample ${sh(g)} into ${sh(S)}`,cords:[[`o:${o.id}:`,ik[0]]],
+      note:`Copy ${nm(g)} ${esc(o.label)} from its top jack into ${nm(S)}'s ${esc(I.label)}${I.st?" (left)":""}. That top jack is half-normal, so ${nm(g)} keeps playing on ${where(`o:${o.id}:`)} while ${nm(S)} records it. Every source on the bay works the same way: move the cord to its top jack.${I.st?" Set the sampler to record in mono.":""}`});
+  });
+  samplers.filter(S=>firstIn(S).st).forEach(S=>{ const I=firstIn(S);
+    add({id:`mix-${S.id}`,label:`Resample the mix into ${sh(S)}`,cords:into(["m:MAINL","m:MAINR"],sideKeys("i",I)),
+      note:`Copy the main mix from the main-out top jacks into ${nm(S)}'s ${esc(I.label)}. They're half-normal, so the mix keeps recording on the ${esc(cfg.studio.iface.name)} while you sample it.`});
+  });
+  masters.forEach(G=>{ const I=firstIn(G), O=firstOut(G);
+    add({id:`mst-${G.id}`,label:`${sh(G)} on the mix`,cords:into(["m:MAINL","m:MAINR"],sideKeys("i",I)),
+      note:`Copy the mains into ${nm(G)}. The main outs are half-normal, so the dry mix still records too, and you get both versions.${O?` Its output (${esc(O.label)}) is on the bay: patch it wherever you want the processed mix to go.`:` Its outputs aren't on the bay, so connect them directly (digitally, or to a spare interface input).`}`});
+  });
+  inserts.forEach(U=>{ const T=layout.insOn[U.id], iK=`i:${U.ins[0].id}:`, oK=`o:${U.outs[0].id}:`;
+    extraLoops.filter(n=>n!==T).forEach(n=>{
+      const cords=[[`m:CH${n}INSSND`,iK],[oK,`m:CH${n}INSRTN`]];
+      if(T) cords.push([`m:CH${T}INSSND`,`m:CH${T}INSRTN`]);
+      add({id:`ins-${U.id}-${n}`,label:`${sh(U)} on ch ${n}`,cords,
+        note:`Move ${nm(U)} onto channel ${n}: ch ${n}'s insert send into the ${sh(U)} input, and the ${sh(U)} output back into ch ${n}'s insert return.${T?` Unplugging it from ch ${T} leaves that channel's insert return with nothing in it, so ch ${T} would go silent. The third cord loops ch ${T}'s insert send straight into its own return to bypass it.`:""} Single-jack inserts are wired with Y-cables behind the bay, so nothing changes at the back.`});
+    });
+  });
+  const strayOuts=gear.flatMap(g=>(g.role==="source"||g.role==="sampler")?g.outs.filter(o=>okOut(o)&&!/^m:(CH\d+|ST\d+L)$/.test(chOf(sideKeys("o",o)[0]))).map(o=>({g,o})):[]);
+  [strayOuts.find(x=>!x.o.st),strayOuts.find(x=>x.o.st)].filter(Boolean).forEach(({g,o})=>{
+    const dest=o.st?(lastSt?[`m:ST${lastSt}L`,`m:ST${lastSt}R`]:null):(lastMono?[`m:CH${lastMono}`]:null); if(!dest) return;
+    const p=pr(dest[0]), was=p&&p.top?esc(p.top.f):"what's normally there", strip=o.st?`ST${lastSt}`:`ch ${lastMono}`;
+    add({id:`move-${o.id}`,label:`${sh(g)} ${esc(o.label)} on ${strip}`,cords:into(sideKeys("o",o),dest),
+      note:`${nm(g)} ${esc(o.label)} has no channel strip of its own. Patch it into the bottom jack of ${strip} to get that strip's EQ and aux sends. Plugging into a half-normal bottom jack replaces the normal, so ${was} drops off ${strip} while the cord is in.`});
+  });
+
+  // DAW-driven routes
+  inserts.forEach(U=>{ const iK=`i:${U.ins[0].id}:`, oK=`o:${U.outs[0].id}:`, a=pr(iK), b=pr(oK);
+    if(a&&a.top&&/^ifo:/.test(a.top.k)&&b&&b.bot&&/^ifi:/.test(b.bot.k))
+      add({id:`hwins-${U.id}`,label:`${sh(U)} as a DAW hardware insert`,cords:[],hl:[iK,oK],
+        note:`<ol><li>On the track you want to treat, add a hardware insert (in Ableton, the <b>External Audio Effect</b>).</li><li>Set “Audio To” to <b>${esc(a.top.f)}</b> and “Audio From” to <b>${esc(b.bot.f.replace(" (insert return)",""))}</b>. Both pairs are normalled, so no cords are needed.</li><li>Press the latency button once so the treated track stays in time.</li></ol>The whole track runs through ${nm(U)}, like a mixer channel insert.`});
+  });
+  samplers.filter(S=>!S.fx).forEach(S=>{ const ik=sideKeys("i",firstIn(S)), a=pr(ik[0]);
+    if(a&&a.top&&/^ifo:/.test(a.top.k)) add({id:`daw-${S.id}`,label:`Play from the DAW into ${sh(S)}`,cords:[],hl:ik,
+      note:`No cords: ${esc(a.top.f.replace(/ \(.*\)$/,""))} is normalled into ${nm(S)}'s ${esc(firstIn(S).label)}. Route any track, bounce or the whole mix to that output in your DAW, and sample it. Match the output level to the sampler: −10 dBV for most older samplers.`});
+  });
+  const grpIns=Object.keys(IDX).filter(k=>/^ifi:/.test(k)&&IDX[k].pos==="b"&&/^m:GRP\d+$/.test((IDX[k].p.top||{}).k||""));
+  if(grpIns.length&&synthOnCh.length){ const gi=grpIns[grpIns.length-1], {g,o}=synthOnCh[0], grp=desk(IDX[gi].p.top.f);
+    add({id:`direct-${o.id}`,label:`Record ${sh(g)} straight into the DAW`,cords:[[`o:${o.id}:`,gi]],
+      note:`Copy ${nm(g)} from its half-normal top jack into ${esc(IDX[gi].p.bot.f)}. It keeps playing on ${where(`o:${o.id}:`)} for monitoring, and records clean on its own track, bypassing the desk. ${grp} stops recording while the cord is in.`}); }
+
+  // Through a sampler used as a live effect
+  gear.filter(g=>g.role==="sampler"&&g.fx&&firstIn(g)&&firstOut(g)).forEach(X=>{
+    const I=firstIn(X), O=firstOut(X), xi=sideKeys("i",I)[0], xo=sideKeys("o",O)[0];
+    const Ys=samplers.filter(s=>s!==X).sort((a,b)=>(firstIn(b).st?1:0)-(firstIn(a).st?1:0)), Y=Ys[0];
+    const yi=Y?sideKeys("i",firstIn(Y))[0]:null, xch=where(xo);
+    const src=monoOnCh.find(x=>x.g!==X&&x.g.role==="sampler")||monoOnCh.find(x=>x.g!==X);
+    const tail=Y?` The ${sh(X)} output goes on to ${nm(Y)} (left input; record in mono).`:"";
+    if(src&&Y) add({id:`fx-ch-${X.id}`,group:"fx",label:`One channel → ${sh(X)} → ${sh(Y)}`,cords:[[`o:${src.o.id}:`,xi],[xo,yi]],
+      note:`Copy ${nm(src.g)} ${esc(src.o.label)} into ${nm(X)}'s ${esc(I.label)}, and copy ${nm(X)}'s output into ${nm(Y)}. Both copies come from half-normal top jacks, so the dry sound stays on ${where(`o:${src.o.id}:`)} and the processed one stays on ${xch}. Any source on the bay works the same way.`});
+    if(spareAux.length) add({id:`fx-aux-${X.id}`,group:"fx",label:`Channel blend → ${sh(X)}${Y?" → "+sh(Y):""}`,cords:[[spareAux[0],xi],...(Y?[[xo,yi]]:[])],
+      note:`Use ${auxOf(spareAux[0]).replace(/^Aux/,"spare Aux")} as the ${sh(X)} send, set post-fade. Turn it up on each channel you want processed and they blend in mono into ${nm(X)}.${tail} <b>Keep that aux at zero on ${xch}</b>, because that's ${sh(X)}'s own output and it would feed back.`});
+    if(pr(xi)&&pr(xi).top&&/^ifo:/.test(pr(xi).top.k)) add({id:`fx-daw-${X.id}`,group:"fx",label:`DAW → ${sh(X)}${Y?" → "+sh(Y):""}`,cords:Y?[[xo,yi]]:[],hl:[xi],
+      note:`No cord on the input side: ${esc(pr(xi).top.f)} is already normalled into ${nm(X)}. Play any track or bounce out of that output.${tail} This is the cleanest way to process a stereo bus or a finished loop.`});
+    extraLoops.slice(0,1).forEach(n=>add({id:`fx-ins-${X.id}`,group:"fx",label:`${sh(X)} as an insert on ch ${n}`,cords:[[`m:CH${n}INSSND`,xi],[xo,`m:CH${n}INSRTN`]],
+      note:`Ch ${n}'s insert send into ${nm(X)}, and ${sh(X)}'s output back into ch ${n}'s insert return, so the channel is processed live in the mix. ${sh(X)}'s output also still reaches ${xch} through its half-normal, so pull that fader down or you'll hear it twice.`}));
+    if(has("m:GRP1")) add({id:`fx-grp-${X.id}`,group:"fx",label:`Group 1 → ${sh(X)}`,cords:[["m:GRP1",xi]],
+      note:`Copy group 1 (half-normal, so the clean stem still records) into ${nm(X)}. The processed version comes back on ${xch}. Route ${xch} to a different group, never group 1, or it feeds back.`});
+  });
+
+  // FX sends and returns
+  sends.forEach((F,fi)=>{ const ik=F.ins.flatMap(x=>sideKeys("i",x)).filter(has), ok=F.outs.flatMap(x=>sideKeys("o",x)).filter(has);
+    const auxes=[...new Set(ik.filter(k=>pr(k)&&pr(k).top).map(auxOf))].join(" and "), rtns=[...new Set(ok.map(rtnOf))].join(" and ");
+    const daw=ik.length&&/^ifo:/.test((pr(ik[0]).top||{}).k||"");
+    if(daw){ const ins=[...new Set(ok.map(k=>{const q=pr(k);return q&&q.bot?esc(q.bot.f):"";}))].filter(Boolean).join(" and ");
+      add({id:`snd-${F.id}`,group:"send",label:`Send to ${sh(F)}`,cords:[],hl:[...ik,...ok],
+      note:`<b>Your DAW is the mixer here, and the cables are already behind the bay.</b><ol><li>Make a return track and set its output to <b>${auxes}</b>. In Ableton, a return track with an External Audio Effect does both directions at once.</li><li>Turn up that return's send on any track to choose how much goes to ${nm(F)}.</li><li>${nm(F)} comes back on <b>${ins}</b>. Set the External Audio Effect's “Audio From” to that input and press its latency button once.</li><li>Set ${nm(F)} to 100% wet. The dry sound stays on the track.</li></ol>`}); return; }
+    add({id:`snd-${F.id}`,group:"send",label:`Send to ${sh(F)}`,cords:[],hl:[...ik,...ok],
+      note:`<b>Same as any mixer, but the cables are already behind the bay.</b><ol><li>On a channel, turn up <b>${auxes}</b> to choose how much of it goes to ${nm(F)}. Post-fade makes the effect follow the fader.</li><li>The aux master sets the level into ${nm(F)}. Its pair is normalled, so no cord is needed.</li><li>${nm(F)} comes back on <b>${rtns}</b>. That return level is how much of the effect you hear.</li><li>Set ${nm(F)} to 100% wet. The dry sound is already on the channel.</li></ol>`});
+  });
+  if(sends.length>=2){ const [F1,F2]=sends, a=pr(sideKeys("i",firstIn(F1))[0]).top.k, i2=sideKeys("i",firstIn(F2))[0];
+    add({id:"snd-two",group:"send",label:`One send into ${sh(F1)} + ${sh(F2)}`,cords:[[a,i2]],hl:[a],
+      note:`Patch ${auxOf(sideKeys("i",firstIn(F1))[0])}'s <b>top</b> jack into ${nm(F2)}'s input. The top jack is half-normal, so the cord takes a copy: it still reaches ${nm(F1)} and now also feeds ${nm(F2)}. One knob per channel sends to both, and the two return levels set the balance.`});
+    const o2=sideKeys("o",firstOut(F2))[0], i1=sideKeys("i",firstIn(F1))[0];
+    add({id:"snd-chain",group:"send",label:`Chain ${sh(F2)} → ${sh(F1)}`,cords:[[o2,i1]],
+      note:`A serial chain is one effect's output patched into another's input. ${nm(F2)}'s output goes into ${nm(F1)}, so the send into ${nm(F2)} now comes back through ${nm(F1)} on ${rtnOf(sideKeys("o",firstOut(F1))[0])}: ${sh(F1)} on the ${sh(F2)} only.`});
+  }
+  const freeRtn=Object.keys(IDX).filter(k=>/^m:M\.RTN\d+$/.test(k)&&IDX[k].pos==="b"&&IDX[k].p.mode==="t");
+  if(inserts.length&&spareAux.length&&freeRtn.length){ const U=inserts[0], T=layout.insOn[U.id], ax=spareAux[spareAux.length-1], rt=freeRtn[0];
+    const cords=[[ax,`i:${U.ins[0].id}:`],[`o:${U.outs[0].id}:`,rt]]; if(T) cords.push([`m:CH${T}INSSND`,`m:CH${T}INSRTN`]);
+    const an=auxOf(ax).replace(/^Aux/,"Aux"), rn=desk(IDX[rt].p.bot.f).replace(" (spare)","");
+    add({id:"snd-par",group:"send",label:`${sh(U)} on the drums (parallel)`,cords,
+      note:`<b>Why not insert it on the drum group?</b> ${nm(U)} has one channel, and drums usually sit on a stereo group pair, so it would only squash one side. Use it as a <b>send</b> instead, the classic parallel crush:<ol><li>Patch ${an} into the ${sh(U)} input.</li><li>Patch the ${sh(U)} output into the spare <b>${rn}</b>.</li>${T?`<li>That leaves ch ${T}'s insert return empty, so loop ch ${T}'s insert send into its own return to keep it playing.</li>`:""}<li>On the desk, turn up ${an} on the drum channels, compress hard, then fade ${rn} in under the dry drums.</li><li>⚠ If that return can fold back into aux sends, keep its ${an} at zero, or ${sh(U)} feeds itself.</li></ol>`});
+  }
+  if(sends.length){ const F=sends[0], O=firstOut(F), ok=sideKeys("o",O);
+    const dest=ok.length===2&&lastSt?[`m:ST${lastSt}L`,`m:ST${lastSt}R`]:lastMono?[`m:CH${lastMono}`]:null;
+    if(dest){ const strip=dest.length===2?`ST${lastSt}`:`ch ${lastMono}`;
+      add({id:"snd-strip",group:"send",label:`${sh(F)} back on a channel`,cords:into(ok,dest),
+        note:`Returns usually only have a level control. To <b>EQ the effect</b> (cutting the lows from a reverb is the classic move) or send it on to another effect, bring it back on ${strip} instead. Whatever normally plays on ${strip} drops off while the cord is in. Keep ${strip}'s own send to ${sh(F)} at zero, or it feeds itself.`}); }
+    const S=samplers.find(s=>firstIn(s).st)||samplers[0];
+    if(S) add({id:"snd-print",group:"send",label:`Print ${sh(F)} into ${sh(S)}`,cords:into(ok,sideKeys("i",firstIn(S))),
+      note:`Patch ${nm(F)}'s output into ${nm(S)} to sample the wet effect only. The return pair is normal, so you won't hear ${sh(F)} on its return while the cord is in: watch ${sh(S)}'s input meter instead.`});
+    if(inserts.length){ const U=inserts[0];
+      add({id:"snd-vs",group:"send",label:"Insert vs send",cords:[],hl:[`i:${U.ins[0].id}:`,`o:${U.outs[0].id}:`,sideKeys("i",firstIn(F))[0],ok[0]],
+        note:`<b>Send</b> (aux → effect → return): a copy goes to the effect and is <b>blended</b> with the dry channel. Use it for reverb, delay and texture, shared across many channels.<br><b>Insert</b> (insert send → unit → insert return): the <b>whole</b> channel passes through the unit and nothing dry remains. Use it for compressors and EQ, one channel at a time. Here ${nm(U)} is the insert and ${nm(F)} is a send.`}); }
+  }
+  myPatches();
+  if(!PATHS.find(p=>p.id===current)) current="none";
+}
+function changes(path){
+  const M=cfg.studio.mixer, d=f=>esc(String(f).replace(M.name+" ","")), byPair={}, out=[];
+  path.cords.flat().forEach(k=>{ const x=IDX[k], id=x.b+"-"+x.i; (byPair[id]=byPair[id]||{p:x.p,pos:[]}).pos.push(x.pos); });
+  Object.values(byPair).forEach(({p,pos})=>{ if(!p.top||!p.bot||p.mode==="t") return; const t=d(p.top.f), b=d(p.bot.f);
+    if(pos.length>1) out.push(`${t} → ${b}: both jacks are patched, so this normal no longer applies.`);
+    else if(pos[0]==="b") out.push(`${b} stops hearing ${t}.`);
+    else if(p.mode==="n") out.push(`${t} no longer reaches ${b} (normal broken).`);
+    else out.push(`${t} still feeds ${b} (half-normal copy).`); });
+  return out.length?`<div class="chg"><b>What the cords change:</b><ul>${out.map(x=>`<li>${x}</li>`).join("")}</ul></div>`:"";
+}
+const TASKS=[["all","Show everything",null],["sample","Sample a sound",/^(samp|daw)-/],["resample","Resample the mix",/^(mix|daw|fx-daw)-/],
+ ["record","Record a source straight into the DAW",/^direct-/],["space","Add reverb, delay or texture",/^snd-(?!par|vs)/],["dyn","Compress or treat one sound",/^(ins|hwins)-|^snd-par/],
+ ["mix","Process the whole mix",/^mst-/],["colour","Use a sampler as an effect",/^fx-/],["move","Give a spare output a channel",/^move-/],["learn","Learn the basics",/^(none|snd-vs)$/]];
+let task="all";
+let openUses=new Set();
+// The path note lives inside the use case that holds the pressed chip, so closing that use case hides it too.
+function placeNote(){ const n=document.getElementById("patchnote"), d=document.getElementById("drawbar"); if(!n||!d) return;
+  const c=[...document.querySelectorAll('#chips .usecase .chip[aria-pressed="true"]')], host=(c.find(x=>x.closest(".usecase").open)||c[0]);
+  if(host) host.closest(".usecase").appendChild(n); else if(n.previousElementSibling!==d) d.after(n); }
+function renderChips(){
+  const el=document.getElementById("chips");
+  { const n=document.getElementById("patchnote"), d=document.getElementById("drawbar"); if(n&&d&&n.previousElementSibling!==d) d.after(n); }
+  if(!cfg||!PATHS.length){ el.innerHTML=""; document.getElementById("patchnote").innerHTML=""; renderDrawbar(); return; }
+  const chip=p=>`<button class="chip${p.group?" "+p.group:""}" data-p="${p.id}" aria-pressed="${p.id===current}">${p.label}</button>`;
+  const base=PATHS.filter(p=>p.group!=="mine"&&p.group!=="draft"), seen=new Set();
+  const uses=TASKS.filter(t=>t[2]).map(t=>{ const ps=base.filter(p=>t[2].test(p.id)); ps.forEach(p=>seen.add(p.id)); return [t[0],t[1],ps]; });
+  const fxHint=!base.some(p=>p.group==="fx");
+  const other=base.filter(p=>!seen.has(p.id)); if(other.length) uses.push(["other","Something else",other]);
+  const my=PATHS.filter(p=>p.group==="mine"); if(my.length) uses.push(["mine","Use one of my saved patches",my]);
+  el.innerHTML=uses.filter(u=>u[2].length||u[0]==="colour"&&fxHint).map(([k,n,ps])=>`<details class="usecase" data-uc="${k}"${openUses.has(k)?" open":""}><summary>${esc(n)} <span class="ucn">${ps.length||""}</span></summary><div class="chipgroup">${ps.length?ps.map(chip).join(""):`<span class="muted small">Tick “Also a live effect” on a sampler (like an S950 running S950FX) to add these.</span>`}</div></details>`).join("");
+  el.querySelectorAll("details[data-uc]").forEach(d=>d.addEventListener("toggle",()=>{ if(d.open){ openUses.add(d.dataset.uc); return; } openUses.delete(d.dataset.uc);
+    if(!drawing&&current!=="none"&&d.querySelector('.chip[aria-pressed="true"]')) clearPath(); }));
+  el.querySelectorAll(".chip[data-p]").forEach(c=>c.addEventListener("click",()=>{ if(drawing){ drawing=false; buildPaths(); } current=c.dataset.p; renderChips(); applyPath(); }));
+  renderDrawbar();
+}
+function applyPath(){
+  const path=PATHS.find(p=>p.id===current);
+  document.querySelectorAll(".chip[data-p]").forEach(c=>c.setAttribute("aria-pressed",c.dataset.p===current));
+  document.querySelectorAll(".col.hl").forEach(c=>c.classList.remove("hl"));
+  document.querySelectorAll(".jack.on").forEach(j=>j.classList.remove("on"));
+  document.querySelectorAll(".link.broken,.link.split").forEach(l=>l.classList.remove("broken","split"));
+  document.querySelectorAll(".cdot").forEach(d=>d.remove());
+  placeNote();
+  if(!path){ document.getElementById("patchnote").innerHTML=""; drawCords(); showDetail(); return; }
+  document.getElementById("patchnote").innerHTML=(path.id==="draft"?draftNote():path.note)+changes(path);
+  (path.hl||[]).forEach(k=>{ if(!IDX[k]) return; const {b,i}=IDX[k]; const c=document.querySelector(`[data-row="${b}-${i}"]`); if(c) c.classList.add("hl"); });
+  if(view==="rack") path.cords.forEach((c,n)=>c.forEach(k=>{ const q=IDX[k]; const r=document.querySelector(`.rcell[data-j="${q.b}-${q.i}-${q.pos}"]`); if(r) r.insertAdjacentHTML("beforeend",`<span class="cdot" style="background:var(${COLORS[n%COLORS.length]})">${n+1}</span>`); }));
+  path.cords.flat().forEach(k=>{ const {b,i,pos,p}=IDX[k];
+    const j=document.querySelector(`[data-j="${b}-${i}-${pos}"]`); if(j) j.classList.add("on");
+    const l=document.querySelector(`[data-l="${b}-${i}"]`); if(!l||!p.top||!p.bot) return;
+    if(p.mode==="n") l.classList.add("broken"); if(p.mode==="hn") l.classList.add(pos==="b"?"broken":"split"); });
+  const first=path.cords.length?path.cords[0][0]:(path.hl||[])[0];
+  drawCords(); showDetail();
+}
+function drawCords(){
+  const svg=document.getElementById("cords"), inner=document.getElementById("inner"); if(!svg||!inner) return;
+  const path=PATHS.find(p=>p.id===current);
+  if(!path||!path.cords.length||view==="rack"){ svg.innerHTML=""; return; }
+  const r0=inner.getBoundingClientRect(), cs=getComputedStyle(document.documentElement);
+  svg.setAttribute("width",inner.scrollWidth); svg.setAttribute("height",inner.scrollHeight);
+  svg.innerHTML=path.cords.map((cord,n)=>{
+    const els=cord.map(k=>{const {b,i,pos}=IDX[k]; return document.querySelector(`.jack[data-j="${b}-${i}-${pos}"]`);}); if(els.some(x=>!x)) return "";
+    const pts=els.map(e=>{const r=e.getBoundingClientRect(); return [r.left-r0.left+r.width/2,r.top-r0.top+r.height/2];});
+    const [[x1,y1],[x2,y2]]=pts, sag=Math.max(20,Math.min(160,40+Math.abs(x2-x1)*0.18+Math.abs(y2-y1)*0.1,inner.scrollHeight-Math.max(y1,y2)-8)), c=cs.getPropertyValue(COLORS[n%COLORS.length]).trim();
+    return `<path d="M${x1},${y1} C${x1},${Math.max(y1,y2)+sag} ${x2},${Math.max(y1,y2)+sag} ${x2},${y2}" stroke="${c}"/><circle cx="${x1}" cy="${y1}" r="7" fill="${c}"/><circle cx="${x2}" cy="${y2}" r="7" fill="${c}"/>`;
+  }).join("");
+}
+// Closing a job puts the bays back to how they're wired, with no cords.
+function clearPath(){ current="none"; applyPath(); }
+window.addEventListener("resize",()=>drawCords());
+
+/* ---------- render: bays ---------- */
+function behaviour(p){
+  const t=p.top?p.top.f:null, b=p.bot?p.bot.f:null;
+  if(!t||!b) return t?`${t} is available to patch from. Nothing sits underneath it.`:`${b} only hears what you patch into it.`;
+  if(p.mode==="hn") return `With nothing patched, ${t} feeds ${b}. Plug into the top jack to take a copy without interrupting it. Plug into the bottom jack to replace what ${b} hears.`;
+  if(p.mode==="n") return `With nothing patched, ${t} feeds ${b}. Plugging into either jack breaks that link.`;
+  return `Top and bottom are independent. ${t} is available to patch from, and ${b} only hears what you patch into it.`;
+}
+const CAB={B:"TRS–TRS (balanced)",U:"TS–TS (unbalanced gear)",X:"XLR female → TRS",Y:"Insert Y-cable leg (TS) from a single-jack TRS insert",S:"Stereo Y-cable leg (TS) into a single TRS stereo input"};
+function renderBays(){
+  const el=document.getElementById("bays");
+  if(!cfg){el.innerHTML=`<div class="empty-state" style="width:min(640px,100%)"><b>No studio saved yet.</b><span>Start from a blank template, then add your mixer, interface and gear. The bays appear here as you go.</span><button class="btn primary" id="startblank">Start a blank studio</button></div>`;
+    document.getElementById("startblank").onclick=()=>{cfg=JSON.parse(JSON.stringify(BLANK)); if(!activeId) activeId="studio"; refresh(true); renderStudioBar(); scheduleSave();};
+    document.getElementById("summary").innerHTML=""; document.getElementById("cables").innerHTML=`<span class="muted">Add your gear and the cable list appears here.</span>`; layout=null; PATHS=[]; renderChips(); drawCords(); return;}
+  layout=allocate(cfg);
+  const P=+cfg.studio.pairsPerBay||24;
+  document.getElementById("inner").classList.toggle("rackmode",view==="rack");
+  if(view==="rack") el.innerHTML=rackHtml(); else
+  el.innerHTML=layout.bays.map((bay,bi)=>`<div class="bay"><div class="bayhead"><b>Bay ${String.fromCharCode(65+bi)}</b><small>${esc(cfg.studio.bayName)}</small><small>${bay.filter(Boolean).length}/${P} pairs used</small></div>
+    <div class="row" style="grid-template-columns:repeat(${P},54px)">${bay.map((p,i)=>col(p,bi,i)).join("")}</div></div>`).join("");
+  el.querySelectorAll("[data-rb]").forEach(b=>b.onclick=()=>{ rackBay=+b.dataset.rb; renderBays(); });
+  el.querySelectorAll(".col[data-b],.rrow[data-b]").forEach(c=>{
+    const go=()=>{ const b=+c.dataset.b, i=+c.dataset.i; selected=selected&&selected[0]===b&&selected[1]===i?null:[b,i]; showDetail(); };
+    c.addEventListener("click",go); c.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go();}});
+  });
+  if(selected && !(layout.bays[selected[0]]||[])[selected[1]]) selected=null;
+  buildPaths(); renderChips(); applyPath(); renderSummary();
+}
+function col(p,bi,i){
+  if(!p) return `<div class="col empty"><span class="num">${i+1}</span><span class="strip blank"></span><span class="jack none"></span><span></span><span class="jack none"></span><span class="strip blank"></span><span></span></div>`;
+  const sel=selected&&selected[0]===bi&&selected[1]===i?" sel":"";
+  const j=(x,pos)=>x?`<span class="jack ${["U","Y","S"].includes(x.cab)?"u":""}" data-j="${bi}-${i}-${pos}"></span>`:`<span class="jack none"></span>`;
+  const s=x=>x?`<span class="strip">${x.s}</span>`:`<span class="strip blank"></span>`;
+  return `<div class="col${sel}" data-row="${bi}-${i}" data-b="${bi}" data-i="${i}" tabindex="0" role="button" aria-label="Pair ${i+1}">
+    <span class="num">${i+1}</span>${s(p.top)}${j(p.top,"t")}<span class="link ${p.top&&p.bot?p.mode:"t"}" data-l="${bi}-${i}"></span>${j(p.bot,"b")}${s(p.bot)}<span class="mode ${p.mode}${p.mode!==p.auto?" ovr":""}">${p.mode.toUpperCase()}</span>${p.lv&&p.lv.length?`<span class="lvbadge ${p.lv.some(x=>x.sev==="warn")?"warn":"info"}" title="${esc(p.lv.map(x=>x.msg).join(" "))}">${p.lv.some(x=>x.sev==="warn")?"!":"i"}</span>`:""}${p.pinned?`<span class="pin" title="Moved by hand">●</span>`:""}</div>`;
+}
+function slotOf(b,i){ return b*(+cfg.studio.pairsPerBay||24)+i; }
+function overrides(){ cfg.overrides=cfg.overrides||{}; cfg.overrides.modes=cfg.overrides.modes||{}; cfg.overrides.pos=cfg.overrides.pos||{}; return cfg.overrides; }
+function moveSlot(from,to){
+  const P=+cfg.studio.pairsPerBay||24, flat=layout.bays.flat(), a=flat[from], b=flat[to]; if(to<0||to>=flat.length||from===to) return;
+  const ov=overrides(); if(a) ov.pos[a.key]=to; if(b) ov.pos[b.key]=from;
+  selected=[Math.floor(to/P),to%P]; refresh(false); scheduleSave();
+}
+function showDetail(){
+  const el=document.getElementById("detail");
+  document.querySelectorAll("[data-row].sel").forEach(c=>c.classList.remove("sel"));
+  el.hidden=!selected||!layout; if(el.hidden){ el.innerHTML=""; return; }
+  const p=layout.bays[selected[0]][selected[1]]; if(!p) return;
+  const c=document.querySelector(`[data-row="${selected[0]}-${selected[1]}"]`); if(c) c.classList.add("sel");
+  const MN={hn:"Half-normal",n:"Normal",t:"Thru"}, name=MN[p.mode], here=slotOf(selected[0],selected[1]);
+  const P=+cfg.studio.pairsPerBay||24, all=layout.bays.flat().length, changed=p.pinned||p.mode!==p.auto;
+  el.innerHTML=`<h2>Bay ${String.fromCharCode(65+selected[0])} · pair ${selected[1]+1} <span class="mode ${p.mode}" style="vertical-align:middle">${name}</span></h2>
+    <dl class="kv"><dt>Top (output)</dt><dd>${p.top?esc(p.top.f):"—"}</dd>${p.top?`<dd class="muted small">Rear cable: ${CAB[p.top.cab]}${p.top.loc?`, about ${LEN[p.top.loc]}`:""}</dd>`:""}</dl>
+    <dl class="kv"><dt>Bottom (input)</dt><dd>${p.bot?esc(p.bot.f):"—"}</dd>${p.bot?`<dd class="muted small">Rear cable: ${CAB[p.bot.cab]}${p.bot.loc?`, about ${LEN[p.bot.loc]}`:""}</dd>`:""}</dl>
+    <p style="margin:0">${esc(behaviour(p))}</p>
+    ${p.gs?`<p class="gs small"><b>Gain staging:</b> ${p.gs.txt}</p>`:""}
+    ${p.lv&&p.lv.length?`<ul class="plain lvlist">${p.lv.map(x=>`<li class="${x.sev}">${x.sev==="warn"?"⚠ ":"ⓘ "}${esc(x.msg)}</li>`).join("")}</ul>`:""}
+    <div class="ovr">
+      <div class="fields">
+        ${p.top&&p.bot?`<label class="f">Normalling<select id="ovmode"><option value="">Automatic (${MN[p.auto]})</option>${["hn","n","t"].map(m=>`<option value="${m}"${changed&&p.mode===m&&p.mode!==p.auto?" selected":""}>${MN[m]}</option>`).join("")}</select></label>`:""}
+        <button class="btn" id="ovl"${here===0?" disabled":""}>◀ Move left</button><button class="btn" id="ovr"${here>=all-1?" disabled":""}>Move right ▶</button>
+        <label class="f">Swap with<select id="ovto"><option value="">Pick a pair…</option>${layout.bays.map((bay,bi)=>bay.map((q,i)=>`<option value="${slotOf(bi,i)}">${String.fromCharCode(65+bi)}${i+1}: ${q?esc(((q.top||q.bot).f).slice(0,40)):"empty"}</option>`).join("")).join("")}</select></label>
+        ${changed?`<button class="btn" id="ovreset">Put back</button>`:""}
+      </div>
+      <span class="muted small">Changing normalling needs a bay that can do it: some switch per pair on top, others by flipping the jack card at the back.</span>
+    </div>`;
+  const key=p.key;
+  const m=document.getElementById("ovmode"); if(m) m.onchange=()=>{ const ov=overrides(); if(m.value&&m.value!==p.auto) ov.modes[key]=m.value; else delete ov.modes[key]; refresh(false); scheduleSave(); };
+  document.getElementById("ovl").onclick=()=>moveSlot(here,here-1);
+  document.getElementById("ovr").onclick=()=>moveSlot(here,here+1);
+  document.getElementById("ovto").onchange=e=>{ if(e.target.value!=="") moveSlot(here,+e.target.value); };
+  const r=document.getElementById("ovreset"); if(r) r.onclick=()=>{ const ov=overrides(); delete ov.pos[key]; delete ov.modes[key]; refresh(false); scheduleSave(); };
+}
+const CABTYPE={B:"TRS–TRS (balanced)",U:"TS–TS (unbalanced gear)",X:"XLR female → TRS (mains)",Y:"Insert Y-cable, TRS → 2× TS",S:"Stereo Y-cable, 2× TS → TRS (one-jack stereo input)"};
+function cableRows(L){
+  const rows=[];
+  Object.entries(L.cabLen).forEach(([k,n])=>{ const [t,len]=k.split("|"); rows.push({type:CABTYPE[t],len,qty:t==="Y"||t==="S"?Math.ceil(n/2):n,where:"Bay rear"}); });
+  const order=["1 m","3 m","5 m"]; rows.sort((a,b)=>a.type.localeCompare(b.type)||order.indexOf(a.len)-order.indexOf(b.len));
+  const TT=(cfg.studio.bayJack||"TRS")==="TT", cord=TT?"TT (bantam) patch cord":"TRS–TRS patch cord";
+  rows.push({type:cord,len:"30 cm",qty:Math.max(6,Math.round(L.used/4)),where:"Front, within a bay"});
+  if((+cfg.studio.bayCount||1)>1) rows.push({type:cord,len:"60 cm",qty:Math.max(4,Math.round(L.used/8)),where:"Front, between bays"});
+  return rows;
+}
+function renderSummary(){
+  const L=layout, el=document.getElementById("summary"), rows=cableRows(L);
+  const lv=L.bays.flat().filter(p=>p&&p.lv&&p.lv.length), nW=lv.filter(p=>p.lv.some(x=>x.sev==="warn")).length;
+  const ov=cfg.overrides||{}, nOv=Object.keys(ov.pos||{}).length+Object.keys(ov.modes||{}).length;
+  el.innerHTML=`<h2>${L.used} of ${L.cap} pairs used</h2>
+    ${L.warn.length?`<ul class="plain warn">${L.warn.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:`<span class="muted small">Everything with priority 1 or 2 has a home.</span>`}
+    ${L.notes.length?`<ul class="plain small muted">${L.notes.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}
+    ${L.offBay.length||L.overflow.length?`<div class="small"><b>Not on the bays</b> (connect directly when needed): ${esc([...L.offBay.map(x=>x.f),...L.overflow.map(p=>(p.top||p.bot).f)].join(", "))}</div>`:""}
+    ${lv.length?`<details class="small"><summary class="lvsum">Level checks: ${nW} to fix, ${lv.length-nW} to note (marked ! and i on the bays)</summary><ul class="plain lvlist">${lv.map(p=>p.lv.map(x=>`<li class="${x.sev}">${x.sev==="warn"?"⚠ ":"ⓘ "}${esc(x.msg)}</li>`).join("")).join("")}</ul></details>`:`<span class="small muted">Levels look matched across every normal.</span>`}
+    ${nOv?`<div class="small">You've changed ${nOv} pair${nOv>1?"s":""} by hand (marked ●). <button class="btn" id="ovall">Undo all hand changes</button></div>`:""}
+    <div class="fields"><button class="btn" id="dllabels">Download printable labels</button><button class="btn" id="dlsvg">Bay image (SVG)</button><button class="btn" id="dlsheet">Bay sheet to print or save as PDF</button><span class="small muted dlstate" id="dlstate"></span></div>
+    <span class="muted small">The image and sheet include the cords of whichever path or patch is selected. Cables and the rear wiring checklist are in the Cables section below.</span>`;
+  const nCab=rows.reduce((n,r)=>n+r.qty,0);
+  document.getElementById("cables").innerHTML=`<h2>${nCab} cables</h2>
+    <table><thead><tr><th>Cable</th><th>Length</th><th class="n">Qty</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.type)}<div class="muted small">${esc(r.where)}</div></td><td>${esc(r.len)}</td><td class="n">${r.qty}</td></tr>`).join("")}</tbody></table>
+    <span class="muted small">Lengths follow each unit's location: rack 1 m, desk 3 m, floor 5 m. Set them under each unit and for the mixer and interface.</span>
+    <div class="fields"><button class="btn" id="dlcables">Download cable list (CSV)</button><button class="btn" id="dlwiring">Rear wiring checklist</button><span class="small muted dlstate"></span></div>`;
+  const oa=document.getElementById("ovall"); if(oa) oa.onclick=()=>{ delete cfg.overrides; refresh(false); scheduleSave(); };
+  document.getElementById("dlcables").onclick=()=>saveFile(`${fileStem()}-cables.csv`,"Cable,Length,Quantity,Where\n"+rows.map(r=>[r.type,r.len,r.qty,r.where].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n")+"\n","text/csv");
+  document.getElementById("dllabels").onclick=()=>saveFile(`${fileStem()}-labels.html`,labelsHtml(),"text/html");
+  document.getElementById("dlwiring").onclick=()=>saveFile(`${fileStem()}-wiring.html`,wiringHtml(),"text/html");
+  document.getElementById("dlsvg").onclick=()=>saveFile(`${fileStem()}-bays.svg`,baySvg(),"image/svg+xml");
+  document.getElementById("dlsheet").onclick=()=>saveFile(`${fileStem()}-bay-sheet.html`,sheetHtml(),"text/html");
+}
+const fileStem=()=>String(nameOf(cfg)).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"studio";
+let dlCap;
+async function saveFile(name,text,type){
+  const sts=document.querySelectorAll(".dlstate"), st={set textContent(v){ sts.forEach(x=>x.textContent=v); }};
+  if(dlCap===undefined){ try{ dlCap=await window.claude?.use?.("downloads"); }catch(e){ dlCap=null; } }
+  if(dlCap){ try{ await dlCap.save({filename:name,data:new Blob([text],{type})}); if(st) st.textContent="Saved."; return; }catch(e){ if(e&&e.code==="cancelled"||e&&e.code==="declined"){ return; } } }
+  try{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); if(st) st.textContent="Downloaded."; }
+  catch(e){ if(st) st.textContent="This viewer blocked the download."; }
+}
+function labelsHtml(){
+  const S=cfg.studio, P=+S.pairsPerBay||24, mm=(+S.labelMM||432)/P, half=P>12?Math.ceil(P/2):P;
+  const cell=j=>`<td style="width:${mm.toFixed(2)}mm">${j?j.s:""}</td>`;
+  const strips=layout.bays.map((bay,bi)=>{ const parts=[]; for(let a=0;a<P;a+=half){ const seg=bay.slice(a,a+half);
+      parts.push(`<div class="strip"><div class="cap">Bay ${String.fromCharCode(65+bi)} · pairs ${a+1}–${a+seg.length} · top row (outputs)</div><table><tr>${seg.map(p=>cell(p&&p.top)).join("")}</tr></table>
+      <div class="cap">Bay ${String.fromCharCode(65+bi)} · pairs ${a+1}–${a+seg.length} · bottom row (inputs)</div><table><tr>${seg.map(p=>cell(p&&p.bot)).join("")}</tr></table></div>`); }
+    return parts.join(""); }).join("");
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(nameOf(cfg))} patchbay labels</title>
+<style>@page{size:A4 landscape;margin:8mm}body{font:10pt system-ui,sans-serif;color:#000;background:#fff;margin:0;padding:8mm}
+h1{font-size:13pt;margin:0 0 2mm}p{margin:0 0 5mm;font-size:9pt}.strip{break-inside:avoid;margin-bottom:6mm}
+.cap{font-size:7pt;color:#555;margin:2mm 0 1mm}table{border-collapse:collapse;table-layout:fixed}
+td{height:8mm;border:.25mm dashed #888;text-align:center;vertical-align:middle;font:600 6pt/1.05 "Arial Narrow",Arial,sans-serif;text-transform:uppercase;overflow:hidden;padding:0 .5mm}
+@media print{p.tip{display:none}}</style></head><body>
+<h1>${esc(nameOf(cfg))} · ${esc(S.bayName||"Patchbay")}</h1>
+<p class="tip">Print at 100% (no "fit to page"), cut along the dashed lines and slide into the bay's label strip. Each cell is ${mm.toFixed(1)} mm wide, from a ${S.labelMM||432} mm strip over ${P} pairs. Change the strip length in the planner if yours differs.</p>
+${strips}</body></html>`;
+}
+
+/* ---------- render: editors ---------- */
+function allOutputs(){ const o=[]; (cfg?.gear||[]).forEach(g=>{ if(g.role==="source"||g.role==="sampler") g.outs.forEach(x=>{ if(!x.st) o.push({id:x.id,label:`${g.name} · ${x.label}`}); }); }); return o; }
+function renderGear(){
+  const el=document.getElementById("gear");
+  if(!cfg){el.innerHTML="";return;}
+  if(!cfg.gear.length){el.innerHTML=`<div class="empty-state">No gear yet. Add your first sound source below.</div>`;return;}
+  const opts=allOutputs();
+  el.innerHTML=cfg.gear.map((g,gi)=>{
+    const outsT=g.role==="master"?"Outputs (optional)":"Outputs";
+    const out=g.outs.map((o,oi)=>`<div class="port">
+        <input class="lbl" aria-label="Output name" value="${esc(o.label)}" data-g="${gi}" data-o="${oi}" data-k="label">
+        <select aria-label="Mono or stereo" data-g="${gi}" data-o="${oi}" data-k="st"><option value="0"${o.st?"":" selected"}>Mono</option><option value="1"${o.st?" selected":""}>Stereo</option></select>
+        ${g.role==="source"||g.role==="sampler"?`<select aria-label="Priority" data-g="${gi}" data-o="${oi}" data-k="pri">${[1,2,3].map(p=>`<option value="${p}"${+o.pri===p?" selected":""}>${PRI[p]}</option>`).join("")}</select>`:""}
+        <button class="icon" title="Remove output" aria-label="Remove output" data-rm="o" data-g="${gi}" data-o="${oi}">×</button></div>`).join("");
+    const inn=g.ins.map((x,ii)=>`<div class="port">
+        <input class="lbl" aria-label="Input name" value="${esc(x.label)}" data-g="${gi}" data-i="${ii}" data-k="label">
+        <select aria-label="Mono or stereo" data-g="${gi}" data-i="${ii}" data-k="st"><option value="0"${x.st?"":" selected"}>Mono</option><option value="1"${x.st&&!x.trs?" selected":""}>Stereo, two jacks</option><option value="2"${x.st&&x.trs?" selected":""}>Stereo, one TRS jack</option></select>
+        <button class="icon" title="Remove input" aria-label="Remove input" data-rm="i" data-g="${gi}" data-i="${ii}">×</button></div>`).join("");
+    const open=openUnits.has(g.id), ik=iconFor(g);
+    const nO=g.outs.reduce((n,o)=>n+(o.st?2:1),0), nI=g.ins.reduce((n,o)=>n+(o.st?2:1),0);
+    const p1=g.outs.filter(o=>+o.pri===1).length;
+    const sum=[nO?`${nO} out${nO>1?"s":""}`:"", nI?`${nI} in${nI>1?"s":""}`:"", (g.role==="source"||g.role==="sampler")&&g.outs.length?`${p1} of ${g.outs.length} always on a channel`:"", g.bal?"balanced":"", g.fx?"live effect":""].filter(Boolean).join(" · ");
+    return `<div class="unit${open?" open":""}">
+      <div class="unithead">
+        <button class="icon tog" aria-expanded="${open}" title="${open?"Hide":"Show"} outputs and details" aria-label="${open?"Hide":"Show"} details for ${esc(g.name)}" data-tog="${g.id}">${open?"▾":"▸"}</button>
+        <span class="iconwrap" title="${esc(ICONS[ik].name)}">${iconSvg(ik)}</span>
+        <input class="name" aria-label="Unit name" value="${esc(g.name)}" data-g="${gi}" data-k="name">
+        <input class="short" aria-label="Short label for the scribble strip" placeholder="Short label" value="${esc(g.short)}" data-g="${gi}" data-k="short">
+        <select aria-label="Role" data-g="${gi}" data-k="role">${Object.keys(ROLE).map(r=>`<option value="${r}"${g.role===r?" selected":""}>${ROLE[r].name}</option>`).join("")}</select>
+        <span class="sum small muted">${esc(sum)}</span>
+        <span class="mv"><button class="icon" title="Move up" aria-label="Move ${esc(g.name)} up" data-mv="-1" data-g="${gi}">↑</button>
+        <button class="icon" title="Move down" aria-label="Move ${esc(g.name)} down" data-mv="1" data-g="${gi}">↓</button>
+        <button class="icon" title="Remove unit" aria-label="Remove ${esc(g.name)}" data-rm="g" data-g="${gi}">✕</button></span>
+      </div>
+      ${open?`<div class="unitbody">
+      <div class="role-note">${ROLE[g.role].note}</div>
+      <div class="fields">
+        <label class="small"><input type="checkbox" data-g="${gi}" data-k="bal"${g.bal?" checked":""}> Balanced I/O</label>
+        ${g.role==="send"&&g.ins.some(x=>x.st)?`<label class="small" title="Only if your mixer has a stereo-linked aux pair"><input type="checkbox" data-g="${gi}" data-k="stereoSend"${g.stereoSend?" checked":""}> Fed in stereo from two aux sends</label>`:""}
+        ${g.role==="sampler"?`<label class="small" title="Adds 'through a sampler' paths, like running an S950 with S950FX as a live colour box"><input type="checkbox" data-g="${gi}" data-k="fx"${g.fx?" checked":""}> Also a live effect</label>`:""}
+        <label class="f">Level<select data-g="${gi}" data-k="level"><option value=""${g.level?"":" selected"}>Automatic (${esc(LVL[lvlOf({...g,level:""})])})</option>${Object.keys(LVL).map(k=>`<option value="${k}"${g.level===k?" selected":""}>${esc(LVL[k])}</option>`).join("")}</select></label>
+        <label class="f">Location<select data-g="${gi}" data-k="loc"><option value=""${g.loc?"":" selected"}>Automatic (${esc(LOC[locOf({...g,loc:""})])})</option>${Object.keys(LOC).map(k=>`<option value="${k}"${g.loc===k?" selected":""}>${esc(LOC[k])}</option>`).join("")}</select></label>
+        <label class="f">Icon<select data-g="${gi}" data-k="icon"><option value=""${g.icon?"":" selected"}>Automatic (${esc(ICONS[iconFor({...g,icon:""})].name)})</option>${Object.keys(ICONS).map(k=>`<option value="${k}"${g.icon===k?" selected":""}>${esc(ICONS[k].name)}</option>`).join("")}</select></label>
+        <label class="f">MIDI<select data-g="${gi}" data-k="midi"><option value=""${g.midi?"":" selected"}>Automatic (${esc(MIDIOPT[midiOf({...g,midi:""})])})</option>${Object.keys(MIDIOPT).map(k=>`<option value="${k}"${g.midi===k?" selected":""}>${esc(MIDIOPT[k])}</option>`).join("")}</select></label>
+        ${midiOf(g)!=="none"?`<label class="small"><input type="checkbox" data-g="${gi}" data-k="clock"${clockOf(g)?" checked":""}> Follows MIDI clock</label>`:""}
+        ${g.role==="insert"?`<label class="f">Normalled onto<select data-g="${gi}" data-k="target"><option value="">Nothing (thru points)</option>${opts.map(o=>`<option value="${o.id}"${g.target===o.id?" selected":""}>${esc(o.label)}</option>`).join("")}</select></label>`:""}
+      </div>
+      <div class="ports">
+        <div class="portlist"><h4>${outsT}</h4>${out}<button class="addrow" data-add-o="${gi}">+ Add output</button></div>
+        ${g.role==="source"?"":`<div class="portlist"><h4>Inputs</h4>${inn}<button class="addrow" data-add-i="${gi}">+ Add input</button></div>`}
+      </div></div>`:""}</div>`;
+  }).join("");
+}
+// Presets: starting points from published specs. Check against your own manual.
+const MIXERS=[
+ ["CADAC Live1 1642",{mono:8,stereo:4,monoReturns:6,stereoReturns:2,lineIn:true,auxes:6,groups:4,mainsXLR:true,nominal:0,maxIn:21,maxInU:10}],
+ ["Mackie 1604-VLZ4",{mono:16,stereo:0,monoReturns:0,stereoReturns:4,lineIn:false,auxes:6,groups:4,mainsXLR:true,nominal:4}],
+ ["Mackie 1402-VLZ4",{mono:6,stereo:4,monoReturns:0,stereoReturns:2,lineIn:false,auxes:2,groups:0,mainsXLR:true,nominal:4}],
+ ["Mackie 1202-VLZ4",{mono:4,stereo:4,monoReturns:0,stereoReturns:2,lineIn:false,auxes:2,groups:0,mainsXLR:true,nominal:4}],
+ ["Soundcraft GB4-16",{mono:16,stereo:4,monoReturns:0,stereoReturns:4,lineIn:false,auxes:6,groups:4,mainsXLR:true,nominal:4}],
+ ["Allen & Heath MixWizard WZ4 16:2",{mono:16,stereo:2,monoReturns:0,stereoReturns:4,lineIn:false,auxes:6,groups:0,mainsXLR:true,nominal:4}],
+ ["Allen & Heath ZED-18",{mono:10,stereo:4,monoReturns:0,stereoReturns:2,lineIn:false,auxes:4,groups:2,mainsXLR:true,nominal:4}],
+ ["Yamaha MG16XU",{mono:8,stereo:4,monoReturns:0,stereoReturns:2,lineIn:false,auxes:4,groups:4,mainsXLR:true,nominal:4}],
+ ["Behringer Xenyx X1832USB",{mono:6,stereo:4,monoReturns:0,stereoReturns:2,lineIn:false,auxes:3,groups:4,mainsXLR:true,nominal:4}]
+];
+const n2=(p,a,b)=>Array.from({length:b-a+1},(_,i)=>p+(a+i)).join(", ");
+const IFACES=[
+ ["RME Fireface UCX II","UCX",n2("In ",1,8),n2("Out ",3,6)],
+ ["RME Fireface 802","FF802",n2("In ",1,12),n2("Out ",3,8)],
+ ["Focusrite Scarlett 2i2","2i2","In 1, In 2",""],
+ ["Focusrite Scarlett 4i4","4i4",n2("In ",1,4),"Out 3, Out 4"],
+ ["Focusrite Scarlett 18i20","18i20",n2("In ",1,8),n2("Out ",3,10)],
+ ["Focusrite Clarett+ 8Pre","8PRE",n2("In ",1,8),n2("Out ",3,10)],
+ ["MOTU M4","M4","In 1, In 2, In 3, In 4","Out 3, Out 4"],
+ ["MOTU 828","828","Mic 1, Mic 2, "+n2("Line ",1,8),n2("Line ",1,8)],
+ ["Universal Audio Apollo Twin X","TWIN","In 1, In 2","Out 3, Out 4"],
+ ["Universal Audio Apollo x8","X8",n2("In ",1,8),n2("Out ",1,8)],
+ ["Audient iD44","ID44",n2("In ",1,4),"Out 3, Out 4"],
+ ["Behringer UMC1820","1820",n2("In ",1,8),n2("Out ",3,10)]
+];
+const BAYPRESETS=[
+ ["Samson S-Patch Plus",24,"TRS"],["Behringer PX3000",24,"TRS"],["dbx PB48",24,"TRS"],["Neutrik NYS-SPP-L1",24,"TRS"],
+ ["Switchcraft StudioPatch 9625 (TT)",48,"TT"],["Generic 96-point TT / bantam",48,"TT"]
+];
+function applyPreset(kind,name){
+  const S=cfg.studio;
+  if(kind==="mixer"){ const m=MIXERS.find(x=>x[0]===name); if(!m) return; Object.assign(S.mixer,m[1],{name:m[0],enabled:true}); }
+  if(kind==="iface"){ const f=IFACES.find(x=>x[0]===name); if(!f) return; Object.assign(S.iface,{name:f[0],short:f[1],ins:f[2],outs:f[3]}); }
+  if(kind==="bay"){ const b=BAYPRESETS.find(x=>x[0]===name); if(!b) return; Object.assign(S,{bayName:b[0],pairsPerBay:b[1],bayJack:b[2]}); }
+}
+function ifaceHint(S){
+  const M=S.mixer, on=M.enabled!==false, list=x=>String(x||"").split(",").map(v=>v.trim()).filter(Boolean);
+  const ins=list(S.iface.ins), outs=list(S.iface.outs), g=+M.groups||0, need=2+g;
+  let t;
+  if(on){ t=`The bay needs ${need} inputs: the first two take the main mix, so list your highest-headroom pair first`+(g?`, and the next ${g} take groups 1–${g}`:"")+`. `;
+    t+=ins.length<need?`Only ${ins.length} listed, so ${need-ins.length===1?"one output stays":"some outputs stay"} off the interface. `:ins.length>need?`The ${ins.length-need} extra become spare inputs on the bay. `:""; }
+  else t=`Each source, then each effect and insert return, takes the next input in this order (${ins.length} listed). `;
+  t+=`Inputs you leave out stay free on the interface itself, which suits front-panel instrument or mic jacks you'd rather plug into directly. Outputs: leave your monitor pair out; the rest feed `+(on?"samplers for resampling":"effect sends, hardware inserts and samplers")+` (${outs.length} listed).`;
+  return esc(t);
+}
+function renderStudio(){
+  const el=document.getElementById("studio"); if(!cfg){el.innerHTML="";return;}
+  const S=cfg.studio, M=S.mixer, I=S.iface, on=M.enabled!==false;
+  const num=(p,k,l,v)=>`<label class="f">${l}<input type="number" min="0" max="64" value="${v}" data-s="${p}" data-k="${k}"></label>`;
+  const dbn=(p,k,l,v)=>`<label class="f">${l}<input type="number" min="-20" max="30" step="1" value="${v}" data-s="${p}" data-k="${k}" data-db="1"></label>`;
+  const txt=(p,k,l,v,w)=>`<label class="f">${l}<input value="${esc(v)}" data-s="${p}" data-k="${k}" style="width:${w||"12em"}"></label>`;
+  const chk=(p,k,l,v)=>`<label class="small"><input type="checkbox" data-s="${p}" data-k="${k}"${v?" checked":""}> ${l}</label>`;
+  const sel=(p,k,l,v,opts)=>`<label class="f">${l}<select data-s="${p}" data-k="${k}">${Object.entries(opts).map(([a,b])=>`<option value="${a}"${v===a?" selected":""}>${esc(b)}</option>`).join("")}</select></label>`;
+  const pre=(kind,list)=>`<label class="f">Preset<select data-preset="${kind}"><option value="">Choose a model…</option>${list.map(x=>`<option>${esc(x[0])}</option>`).join("")}</select></label>`;
+  el.innerHTML=`
+   <div class="panel"><h2>Patchbays</h2><div class="fields">${pre("bay",BAYPRESETS)}</div>
+     <div class="fields">${txt("","bayName","Model",S.bayName)}${num("","bayCount","Bays",S.bayCount)}${num("","pairsPerBay","Pairs per bay",S.pairsPerBay)}${sel("","bayJack","Jacks",S.bayJack||"TRS",{TRS:"¼″ TRS",TT:"TT / bantam"})}</div>
+     <div class="fields">${num("","labelMM","Label strip length (mm)",S.labelMM||432)}</div>
+     <span class="muted small">Sources fill the first bay and processing the next when they fit; otherwise everything packs in order. The strip length sets the printed label size.</span></div>
+   <div class="panel"><h2>Mixer</h2><div class="fields">${chk("mixer","enabled","I use a mixer",on)}</div>
+     ${on?`<div class="fields">${pre("mixer",MIXERS)}</div>
+     <div class="fields">${txt("mixer","name","Name",M.name)}${txt("mixer","short","Short",M.short,"6em")}${sel("","mixerLoc","Where it sits",S.mixerLoc||"desk",LOC)}</div>
+     <div class="fields">${num("mixer","mono","Mono ch (insert)",M.mono)}${num("mixer","stereo","Stereo ch",M.stereo)}${num("mixer","monoReturns","Mono returns",M.monoReturns)}${num("mixer","stereoReturns","Stereo returns",M.stereoReturns)}${num("mixer","auxes","Aux sends",M.auxes)}${num("mixer","groups","Groups",M.groups)}${num("mixer","insertsOnBay","Extra inserts on bay",M.insertsOnBay)}</div>
+     <div class="fields">${dbn("mixer","nominal","Nominal level (dBu)",M.nominal??4)}${dbn("mixer","maxIn","Max line in, balanced (dBu)",M.maxIn??22)}${dbn("mixer","maxInU","Max line in, unbalanced (dBu)",M.maxInU??((M.maxIn??22)-6))}</div>
+     <div class="fields">${chk("mixer","lineIn","Stereo Line In to the mix",M.lineIn)}${chk("mixer","mainsXLR","Main outs are XLR",M.mainsXLR)}</div>`
+     :`<span class="muted small">No mixer: sources go straight into interface inputs, and your DAW's sends and hardware inserts drive the effects through spare interface outputs.</span>`}</div>
+   <div class="panel"><h2>Interface</h2><div class="fields">${pre("iface",IFACES)}</div>
+     <div class="fields">${txt("iface","name","Name",I.name)}${txt("iface","short","Short",I.short,"6em")}${sel("","ifaceLoc","Where it sits",S.ifaceLoc||"rack",LOC)}</div>
+     <label class="f">${on?"Inputs for mains, then groups, in order":"Inputs for sources and effect returns, in order"}<input value="${esc(I.ins)}" data-s="iface" data-k="ins"></label>
+     <label class="f">${on?"Spare outputs to feed samplers, in order":"Spare outputs for effect sends, inserts and samplers, in order"}<input value="${esc(I.outs)}" data-s="iface" data-k="outs"></label>
+     <div class="fields">${dbn("iface","maxIn","Max line input (dBu)",I.maxIn??19)}</div>
+     <span class="muted small" id="ifhint">${ifaceHint(S)}</span>
+     <label class="f">Notes on this interface<textarea class="note" data-s="iface" data-k="note" rows="2" placeholder="Why these inputs and outputs, for next time">${esc(I.note||"")}</textarea></label></div>
+   <p class="muted small" style="grid-column:1/-1;margin:0">Presets are starting points from published specs. Check them against your own manual.</p>`;
+}
+
+/* ---------- state changes ---------- */
+let redrawTimer=null;
+function refresh(full){ if(full){renderGear();renderStudio();} renderMidi(); clearTimeout(redrawTimer); redrawTimer=setTimeout(()=>{renderBays();syncJson();},full?0:120); }
+document.addEventListener("input",e=>{
+  const t=e.target; if(!cfg||t.id==="json") return;
+  const val=t.type==="checkbox"?t.checked:t.dataset.db?(parseFloat(t.value)||0):t.type==="number"?Math.max(0,parseInt(t.value||"0",10)):t.value;
+  if(t.dataset.preset){ if(t.value){ applyPreset(t.dataset.preset,t.value); refresh(true); scheduleSave(); } return; }
+  if(t.dataset.s!==undefined){ const o=t.dataset.s?cfg.studio[t.dataset.s]:cfg.studio; o[t.dataset.k]=val; refresh(t.dataset.k==="enabled"); { const h=document.getElementById("ifhint"); if(h) h.innerHTML=ifaceHint(cfg.studio); } if(t.dataset.k==="name"&&!t.dataset.s) nameStudioOption(); scheduleSave(); return; }
+  if(t.dataset.g===undefined) return;
+  const g=cfg.gear[+t.dataset.g]; const k=t.dataset.k;
+  const target=t.dataset.o!==undefined?g.outs[+t.dataset.o]:t.dataset.i!==undefined?g.ins[+t.dataset.i]:g;
+  if(k==="st"){ target.st=t.value!=="0"; if(t.value==="2") target.trs=true; else delete target.trs; } else if(k==="pri") target.pri=+t.value; else target[k]=val;
+  const structural=(k==="role"||k==="name"&&false);
+  if(k==="icon"){ if(val) g.icon=val; else delete g.icon; refresh(true); scheduleSave(); return; }
+  if(k==="level"||k==="loc"){ if(val) g[k]=val; else delete g[k]; refresh(false); scheduleSave(); return; }
+  if(k==="midi"){ if(val) g.midi=val; else delete g.midi; refresh(true); scheduleSave(); return; }
+  if(k==="clock"){ renderMidi(); scheduleSave(); return; }
+  if(k==="role"){ g.bal=g.bal||val==="insert"||val==="master"; refresh(true);} else refresh(false);
+  scheduleSave();
+});
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button"); if(!t||!cfg) return;
+  if(t.dataset.tog){ openUnits.has(t.dataset.tog)?openUnits.delete(t.dataset.tog):openUnits.add(t.dataset.tog); renderGear(); const b=document.querySelector(`[data-tog="${t.dataset.tog}"]`); if(b) b.focus(); return; }
+  if(t.dataset.all){ if(t.dataset.all==="open") cfg.gear.forEach(g=>openUnits.add(g.id)); else openUnits.clear(); renderGear(); return; }
+  if(t.dataset.add){ const u=defaultUnit(t.dataset.add); openUnits.add(u.id); cfg.gear.push(u); refresh(true); scheduleSave(); return; }
+  if(t.dataset.addO!==undefined){ cfg.gear[+t.dataset.addO].outs.push({id:uid(),label:"Out "+(cfg.gear[+t.dataset.addO].outs.length+1),st:false,pri:2}); refresh(true); scheduleSave(); return; }
+  if(t.dataset.addI!==undefined){ cfg.gear[+t.dataset.addI].ins.push({id:uid(),label:"In",st:false}); refresh(true); scheduleSave(); return; }
+  if(t.dataset.mv){ const i=+t.dataset.g, j=i+ +t.dataset.mv; if(j<0||j>=cfg.gear.length) return; [cfg.gear[i],cfg.gear[j]]=[cfg.gear[j],cfg.gear[i]]; refresh(true); scheduleSave(); return; }
+  if(t.dataset.rm){ const g=+t.dataset.g;
+    if(t.dataset.rm==="g") cfg.gear.splice(g,1);
+    if(t.dataset.rm==="o") cfg.gear[g].outs.splice(+t.dataset.o,1);
+    if(t.dataset.rm==="i") cfg.gear[g].ins.splice(+t.dataset.i,1);
+    refresh(true); scheduleSave(); }
+});
+
+/* ---------- saving ---------- */
+function setPill(text,cls){ const p=document.getElementById("savepill"); p.textContent=text; p.className="pill"+(cls?" "+cls:""); }
+function queueSave(){ setPill("Unsaved changes"); clearTimeout(saveTimer); saveTimer=setTimeout(save,1200); }
+function scheduleSave(){ trackHistory(); queueSave(); }
+let saving=false, pending=false, activeId=null, studios=[];
+const LS="patchbay-studios";
+const lsGet=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const lsSet=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+function localStore(){ let st={}; try{ st=JSON.parse(lsGet(LS)||"{}")||{}; }catch(e){}
+  const old=lsGet("patchbay-planner"); if(old&&!st.studio){ try{ st.studio={config:JSON.parse(old)}; lsSet(LS,JSON.stringify(st)); }catch(e){} }
+  return st; }
+const nameOf=c=>(c&&c.studio&&c.studio.name)||"My studio";
+async function listStudios(){
+  if(db){ try{ const q=await db.collection("planner").get(); return q.docs.map(d=>({id:d.id,name:nameOf(d.data().config)})); }catch(e){ return []; } }
+  return Object.entries(localStore()).map(([id,v])=>({id,name:nameOf(v.config)}));
+}
+async function readStudio(id){
+  if(db){ try{ const s=await db.doc("planner/"+id).get(); return s.exists?JSON.parse(JSON.stringify(s.data().config)):null; }catch(e){ return null; } }
+  const v=localStore()[id]; return v?JSON.parse(JSON.stringify(v.config)):null;
+}
+async function writeStudio(id,config){
+  if(db){ await db.doc("planner/"+id).set({config,savedAt:Date.now()}); return; }
+  const st=localStore(); st[id]={config}; lsSet(LS,JSON.stringify(st));
+}
+async function removeStudio(id){
+  if(db){ await db.doc("planner/"+id).delete(); return; }
+  const st=localStore(); delete st[id]; lsSet(LS,JSON.stringify(st));
+}
+async function save(){
+  if(!cfg) return; if(!activeId) activeId="studio";
+  const body=JSON.stringify(cfg); if(body===lastSaved){setPill(db?"Saved":"Saved in this browser",db?"ok":"");return;}
+  if(saving){pending=true;return;} saving=true;
+  try{ await writeStudio(activeId,JSON.parse(body)); setPill(db?"Saved":"Saved in this browser only",db?"ok":""); lastSaved=body;
+    if(!studios.find(s=>s.id===activeId)){ studios.push({id:activeId,name:nameOf(cfg)}); renderStudioBar(); } }
+  catch(e){ setPill(e&&e.code==="invalid_argument"||e&&e.code==="permission_denied"?"Read-only: changes not saved":"Couldn't save, retrying on next change","bad"); }
+  saving=false; if(pending){pending=false;save();}
+}
+async function openStudio(id){
+  clearTimeout(saveTimer); if(cfg&&JSON.stringify(cfg)!==lastSaved) await save();
+  activeId=id; lsSet("patchbay-active",id);
+  const c=await readStudio(id); cfg=c; lastSaved=c?JSON.stringify(c):""; selected=null; current="none"; task="all"; openUnits.clear(); drawing=false; resetHistory();
+  setPill(c?(db?"Saved":"Saved in this browser only"):(db?"Nothing saved yet":"Changes stay in this browser"),c&&db?"ok":"");
+  refresh(true); renderStudioBar();
+}
+async function addStudio(config,why){
+  const id="s"+Date.now().toString(36); cfg=JSON.parse(JSON.stringify(config)); activeId=id; lsSet("patchbay-active",id);
+  studios.push({id,name:nameOf(cfg)}); lastSaved=""; selected=null; current="none"; openUnits.clear(); drawing=false; resetHistory();
+  refresh(true); renderStudioBar(); await save(); if(why) shareState(why);
+}
+function renderStudioBar(){
+  const sel=document.getElementById("studiosel"), nm=document.getElementById("studioname");
+  sel.innerHTML=studios.length?studios.map(s=>`<option value="${esc(s.id)}"${s.id===activeId?" selected":""}>${esc(s.name)}</option>`).join(""):`<option>My studio</option>`;
+  if(document.activeElement!==nm) nm.value=cfg?nameOf(cfg):"";
+  nm.disabled=!cfg; document.getElementById("stdel").disabled=studios.length<2; document.getElementById("stdup").disabled=!cfg;
+}
+function nameStudioOption(){ const s=studios.find(x=>x.id===activeId); if(s&&cfg){ s.name=nameOf(cfg); const o=document.querySelector(`#studiosel option[value="${CSS.escape(activeId)}"]`); if(o) o.textContent=s.name; } }
+document.getElementById("studiosel").onchange=e=>openStudio(e.target.value);
+document.getElementById("studioname").addEventListener("input",e=>{ if(!cfg) return; cfg.studio.name=e.target.value; nameStudioOption(); scheduleSave(); });
+document.getElementById("stnew").onclick=()=>addStudio({...JSON.parse(JSON.stringify(BLANK)),studio:{...JSON.parse(JSON.stringify(BLANK.studio)),name:"New studio"}});
+document.getElementById("stdup").onclick=()=>{ if(cfg) addStudio({...cfg,studio:{...cfg.studio,name:nameOf(cfg)+" (copy)"}}); };
+let delArm=0;
+document.getElementById("stdel").onclick=async e=>{ const b=e.currentTarget;
+  if(Date.now()-delArm>4000){ delArm=Date.now(); b.textContent="Click again to delete"; setTimeout(()=>{ b.textContent="Delete"; },4000); return; }
+  delArm=0; b.textContent="Delete"; const gone=activeId;
+  try{ await removeStudio(gone); studios=studios.filter(s=>s.id!==gone); lastSaved=JSON.stringify(cfg); await openStudio(studios[0].id); }catch(err){ setPill("Couldn't delete that studio","bad"); } };
+// sharing: a compact code anyone can paste in, or a link when the page is hosted
+const b64=u8=>{ let s=""; u8.forEach(c=>s+=String.fromCharCode(c)); return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); };
+const unb64=t=>{ const s=atob(t.replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from(s,c=>c.charCodeAt(0)); };
+async function encodeStudio(c){ const raw=new TextEncoder().encode(JSON.stringify(c));
+  if(window.CompressionStream){ try{ const buf=await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer(); return "PB1."+b64(new Uint8Array(buf)); }catch(e){} }
+  return "PB0."+b64(raw); }
+async function decodeStudio(code){ code=String(code).trim().replace(/^.*#pb=/,""); const [v,body]=code.split(".");
+  let bytes=unb64(body||""); if(v==="PB1") bytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer()); else if(v!=="PB0") throw 0;
+  const c=JSON.parse(new TextDecoder().decode(bytes)); if(!c||!c.studio||!Array.isArray(c.gear)) throw 0; return c; }
+const shareState=m=>{ document.getElementById("sharestate").textContent=m||""; };
+document.getElementById("stshare").onclick=async()=>{ const box=document.getElementById("sharebox"); box.hidden=!box.hidden; if(box.hidden||!cfg) return;
+  const code=await encodeStudio(cfg); document.getElementById("sharecode").value=code;
+  const hosted=/^https?:$/.test(location.protocol)&&!window.claude, link=document.getElementById("sharelink");
+  link.hidden=!hosted; if(hosted) link.querySelector("input").value=location.href.split("#")[0]+"#pb="+code; };
+document.getElementById("sharecopy").onclick=async()=>{ const t=document.getElementById("sharecode"); try{ await navigator.clipboard.writeText(t.value); shareState("Code copied."); }catch(e){ t.select(); shareState("Selected: press Ctrl/Cmd+C to copy."); } };
+document.getElementById("shareopen").onclick=async()=>{ try{ const c=await decodeStudio(document.getElementById("sharein").value); await addStudio(c,`Opened “${nameOf(c)}” as a new studio.`); document.getElementById("sharein").value=""; }catch(e){ shareState("That doesn't look like a studio share code."); } };
+async function load(){
+  try{ db=await window.claude?.use?.("db"); }catch(e){ db=null; }
+  studios=await listStudios();
+  if(!studios.length&&typeof STARTER!=="undefined"){ try{ await writeStudio("studio",STARTER); studios=[{id:"studio",name:nameOf(STARTER)}]; }catch(e){} }
+  const want=lsGet("patchbay-active");
+  activeId=studios.find(s=>s.id===want)?want:(studios[0]&&studios[0].id)||null;
+  if(activeId) await openStudio(activeId); else { setPill(db?"Nothing saved yet":"Changes stay in this browser"); refresh(true); renderStudioBar(); }
+  if(/^#pb=/.test(location.hash)){ try{ const c=await decodeStudio(location.hash); history.replaceState(null,"",location.href.split("#")[0]); await addStudio(c,`Opened “${nameOf(c)}” from the link as a new studio.`); document.getElementById("sharebox").hidden=false; }catch(e){} }
+}
+
+/* ---------- import / export ---------- */
+const STARTER={"gear":[{"bal":false,"fx":false,"id":"mpc","ins":[{"id":"mpcrec","label":"Rec in","st":false}],"name":"MPC60","outs":[{"id":"mpc1","label":"Out 1","pri":1,"st":false},{"id":"mpc2","label":"Out 2","pri":1,"st":false},{"id":"mpc3","label":"Out 3","pri":1,"st":false},{"id":"mpc4","label":"Out 4","pri":1,"st":false},{"id":"mpcst","label":"Stereo","pri":1,"st":true},{"id":"mpc5","label":"Out 5","pri":2,"st":false},{"id":"mpc6","label":"Out 6","pri":2,"st":false},{"id":"mpc7","label":"Out 7","pri":3,"st":false},{"id":"mpc8","label":"Out 8","pri":3,"st":false}],"role":"sampler","short":"MPC","target":""},{"bal":false,"id":"sh101","ins":[],"name":"SH-101","outs":[{"id":"sh1","label":"Out","pri":1,"st":false}],"role":"source","short":"","target":""},{"bal":false,"fx":true,"id":"s950","ins":[{"id":"s950in","label":"Line in","st":false}],"name":"S950","outs":[{"id":"s950mix","label":"Mix","pri":1,"st":false}],"role":"sampler","short":"","target":""},{"bal":false,"id":"mtx","ins":[],"name":"Matrix-1000","outs":[{"id":"mtx1","label":"Out","pri":1,"st":false}],"role":"source","short":"MTX","target":""},{"bal":false,"id":"cz","ins":[],"name":"CZ-101","outs":[{"id":"cz1","label":"Out","pri":1,"st":false}],"role":"source","short":"","target":""},{"bal":false,"id":"s3200","ins":[{"id":"s32rec","label":"Rec","st":true}],"name":"S3200XL","outs":[{"id":"s32st","label":"Stereo","pri":1,"st":true},{"id":"s32o1","label":"Out 1","pri":2,"st":false}],"role":"sampler","short":"S3200","target":""},{"bal":false,"id":"sd1","ins":[],"name":"SD-1","outs":[{"id":"sd1main","label":"Main","pri":1,"st":true},{"id":"sd1aux","label":"Aux","pri":3,"st":true}],"role":"source","short":"SD-1","target":""},{"bal":false,"id":"vp","ins":[{"id":"vpin","label":"In","st":true}],"name":"VP-9000","outs":[{"id":"vpmain","label":"Main","pri":1,"st":true}],"role":"sampler","short":"VP","target":""},{"bal":false,"id":"xv","ins":[],"name":"XV-5080","outs":[{"id":"xva","label":"Out A","pri":2,"st":true}],"role":"source","short":"XV","target":""},{"bal":true,"id":"dbx","ins":[{"id":"dbxi","label":"In","st":false}],"name":"DBX-160X","outs":[{"id":"dbxo","label":"Out","pri":1,"st":false}],"role":"insert","short":"DBX","target":"sh1"},{"bal":false,"id":"qv2","ins":[{"id":"qv2i","label":"In","st":false}],"name":"Quadraverb II","outs":[{"id":"qv2o","label":"Out","pri":1,"st":true}],"role":"send","short":"QV2","target":""},{"bal":false,"id":"mv2","ins":[{"id":"mv2i","label":"In","st":false}],"name":"Midiverb II","outs":[{"id":"mv2o","label":"Out L","pri":1,"st":false}],"role":"send","short":"MV2","target":""},{"bal":false,"id":"mcos","ins":[{"id":"mcosi","label":"In","st":true,"trs":true}],"name":"Microcosm","outs":[{"id":"mcoso","label":"Out","pri":1,"st":true}],"role":"send","short":"MCOS","target":""},{"bal":true,"id":"fin","ins":[{"id":"fini","label":"In","st":true}],"name":"Finalizer 96K","outs":[],"role":"master","short":"FIN","target":""}],"studio":{"name":"Example: MPC60 sampler studio","bayCount":2,"bayName":"Samson S-Patch Plus","iface":{"ins":"In 1, In 2, In 5, In 6, In 7, In 8","name":"RME UCX II","outs":"Out 3, Out 4, Out 5, Out 6","short":"UCX","note":"Mains on In 1/2 for the most headroom (+24 dBu). Groups on the rear In 5\u20138 so the cabling stays permanent. Front In 3/4 left off the bay for plugging a guitar, mic or one-off synth straight in (they switch to instrument level)."},"mixer":{"auxes":6,"groups":4,"insertsOnBay":1,"lineIn":true,"mainsXLR":true,"mono":8,"monoReturns":6,"name":"CADAC Live1 1642","short":"","stereo":4,"stereoReturns":2},"pairsPerBay":24},"version":1};
+const useCfg=v=>{ cfg=JSON.parse(JSON.stringify(v)); selected=null; refresh(true); scheduleSave(); };
+document.getElementById("dljson").onclick=()=>{ if(!cfg) return; const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(cfg,null,1)],{type:"application/json"})); a.download="patchbay-studio.json"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); };
+document.getElementById("openjson").onchange=async e=>{ const st=document.getElementById("jsonstate"), f=e.target.files[0]; if(!f) return;
+  try{ const v=JSON.parse(await f.text()); if(!v||!v.studio||!Array.isArray(v.gear)) throw 0; useCfg(v); st.textContent="Opened "+f.name+"."; }
+  catch(err){ st.textContent="That file isn't a studio backup."; } e.target.value=""; };
+document.getElementById("blankjson").onclick=()=>{ if(cfg&&cfg.gear.length&&!confirm("Replace the current studio with a blank one? Download a backup first if you want to keep it.")) return; useCfg(BLANK); };
+function syncJson(){ const t=document.getElementById("json"); if(document.activeElement!==t) t.value=cfg?JSON.stringify(cfg,null,1):""; }
+document.getElementById("copyjson").onclick=async()=>{ const t=document.getElementById("json"); try{await navigator.clipboard.writeText(t.value);document.getElementById("jsonstate").textContent="Copied.";}catch(e){t.select();document.getElementById("jsonstate").textContent="Selected: press Ctrl/Cmd+C to copy.";} };
+document.getElementById("loadjson").onclick=()=>{ const st=document.getElementById("jsonstate");
+  try{ const v=JSON.parse(document.getElementById("json").value); if(!v||!v.studio||!Array.isArray(v.gear)) throw 0; cfg=v; selected=null; refresh(true); scheduleSave(); st.textContent="Loaded."; }
+  catch(e){ st.textContent="That isn't a studio JSON: it needs a studio object and a gear list."; } };
+
+/* ---------- ask Claude ---------- */
+let sample=null;
+function describe(){
+  const L=layout; const lines=[];
+  L.bays.forEach((bay,bi)=>bay.forEach((p,i)=>{ if(p) lines.push(`${pairName(bi,i)} [${p.mode.toUpperCase()}]: top=${p.top?p.top.f:"-"} | bottom=${p.bot?p.bot.f:"-"}`); }));
+  return `STUDIO (JSON):\n${JSON.stringify(cfg)}\n\nGENERATED BAYS:\n${lines.join("\n")}\n\nWARNINGS: ${L.warn.join(" ")||"none"}\nNOT ON BAYS: ${L.offBay.map(x=>x.f).join(", ")||"none"}`;
+}
+const pairName=(b,i)=>String.fromCharCode(65+b)+(i+1);
+function pairByName(n){ const m=/^([A-Z])(\d+)$/.exec(String(n||"").trim().toUpperCase()); if(!m||!layout) return null; const b=m[1].charCodeAt(0)-65, i=+m[2]-1; return (layout.bays[b]||[])[i]||null; }
+function slotOfKey(key){ let at=-1; layout.bays.flat().forEach((p,n)=>{ if(p&&p.key===key) at=n; }); return at; }
+const gearById=id=>cfg.gear.find(g=>g.id===id), outById=id=>{ for(const g of cfg.gear){ const o=g.outs.find(x=>x.id===id); if(o) return o; } return null; };
+// Turns a suggested action into one bound to stable keys, or null if the page can't apply it.
+function bindAction(a){
+  if(!a||typeof a!=="object") return null;
+  if(a.op==="mode"){ const p=pairByName(a.pair); return p&&p.top&&p.bot&&["hn","n","t"].includes(a.value)?{op:"mode",key:p.key,value:a.value}:null; }
+  if(a.op==="swap"){ const p=pairByName(a.pair), q=pairByName(a.with); return p&&q&&p!==q?{op:"swap",a:p.key,b:q.key}:null; }
+  if(a.op==="move"){ const p=pairByName(a.pair), m=/^([A-Z])(\d+)$/.exec(String(a.to||"").toUpperCase()); if(!p||!m) return null; const to=(m[1].charCodeAt(0)-65)*(+cfg.studio.pairsPerBay||24)+(+m[2]-1); return to>=0&&to<layout.bays.flat().length?{op:"move",key:p.key,to}:null; }
+  if(a.op==="priority") return outById(a.output)&&[1,2,3].includes(+a.value)?{op:"priority",output:a.output,value:+a.value}:null;
+  if(a.op==="monoSend"||a.op==="stereoSend"){ const g=gearById(a.gear); return g&&g.role==="send"?{op:a.op,gear:a.gear}:null; }
+  if(a.op==="level") return gearById(a.gear)&&LVL[a.value]?{op:"level",gear:a.gear,value:a.value}:null;
+  if(a.op==="order"){ const g=gearById(a.gear), h=gearById(a.before); return g&&h&&g!==h?{op:"order",gear:a.gear,before:a.before}:null; }
+  if(a.op==="insertOn"){ const g=gearById(a.gear); return g&&g.role==="insert"&&(!a.output||outById(a.output))?{op:"insertOn",gear:a.gear,output:a.output||""}:null; }
+  return null;
+}
+// True only if the action would change something right now.
+function wouldChange(a){
+  if(!a||!layout) return false;
+  const flat=layout.bays.flat(), pk=k=>flat.find(x=>x&&x.key===k);
+  if(a.op==="mode"){ const p=pk(a.key); return !!p&&p.mode!==a.value; }
+  if(a.op==="swap") return slotOfKey(a.a)>=0&&slotOfKey(a.b)>=0;
+  if(a.op==="move"){ const x=slotOfKey(a.key); return x>=0&&x!==a.to; }
+  if(a.op==="priority"){ const o=outById(a.output); return !!o&&+o.pri!==a.value; }
+  if(a.op==="monoSend"||a.op==="stereoSend"){ const g=gearById(a.gear); return !!g&&g.ins.some(x=>x.st)&&!!g.stereoSend!==(a.op==="stereoSend"); }
+  if(a.op==="level"){ const g=gearById(a.gear); return !!g&&lvlOf(g)!==a.value; }
+  if(a.op==="order"){ const i=cfg.gear.findIndex(g=>g.id===a.gear), j=cfg.gear.findIndex(g=>g.id===a.before); return i>=0&&j>=0&&i!==j-1; }
+  if(a.op==="insertOn"){ const g=gearById(a.gear); return !!g&&(g.target||"")!==a.output; }
+  return false;
+}
+// Applies a suggestion and returns a function that undoes just that change, or null if nothing was applied.
+function runAction(a){
+  const ov=overrides(), was={modes:{...ov.modes},pos:{...ov.pos}};
+  // Undo looks the object up again, since the studio may have been replaced by undo/redo since.
+  const keep=(get,k)=>{ const obj=get(), had=k in obj, v=obj[k]; return ()=>{ const o=get(); if(!o) return; if(had) o[k]=v; else delete o[k]; }; };
+  let undo=null;
+  if(a.op==="mode"||a.op==="swap"||a.op==="move"){
+    if(a.op==="mode"){ const p=layout.bays.flat().find(x=>x&&x.key===a.key); if(!p) return null; if(a.value===p.auto) delete ov.modes[a.key]; else ov.modes[a.key]=a.value; }
+    else { const x=a.op==="swap"?slotOfKey(a.a):slotOfKey(a.key), y=a.op==="swap"?slotOfKey(a.b):a.to; if(x<0||y<0) return null; moveSlot(x,y); }
+    const touched=["modes","pos"].flatMap(t=>[...new Set([...Object.keys(was[t]),...Object.keys(ov[t])])].filter(k=>was[t][k]!==ov[t][k]).map(k=>[t,k]));
+    undo=()=>{ const o=overrides(); touched.forEach(([t,k])=>{ if(k in was[t]) o[t][k]=was[t][k]; else delete o[t][k]; }); };
+    if(a.op!=="mode") return undo; }
+  else if(a.op==="priority"){ const o=outById(a.output); if(!o) return null; undo=keep(()=>outById(a.output),"pri"); o.pri=a.value; }
+  else if(a.op==="monoSend"||a.op==="stereoSend"){ const g=gearById(a.gear); if(!g) return null; undo=keep(()=>gearById(a.gear),"stereoSend"); if(a.op==="stereoSend") g.stereoSend=true; else delete g.stereoSend; }
+  else if(a.op==="level"){ const g=gearById(a.gear); if(!g) return null; undo=keep(()=>gearById(a.gear),"level"); g.level=a.value; }
+  else if(a.op==="order"){ const g=gearById(a.gear); if(!g) return null; const at=cfg.gear.indexOf(g); cfg.gear.splice(at,1); cfg.gear.splice(cfg.gear.indexOf(gearById(a.before)),0,g);
+    undo=()=>{ const i=cfg.gear.findIndex(x=>x.id===a.gear); if(i<0) return; const [u]=cfg.gear.splice(i,1); cfg.gear.splice(Math.min(at,cfg.gear.length),0,u); }; }
+  else if(a.op==="insertOn"){ const g=gearById(a.gear); if(!g) return null; undo=keep(()=>gearById(a.gear),"target"); g.target=a.output; }
+  else return null;
+  refresh(true); scheduleSave(); return undo;
+}
+let reviewRecs=[];
+function renderReview(){
+  const out=document.getElementById("askout");
+  out.innerHTML=reviewRecs.length?`<ol class="recs">${reviewRecs.map((r,n)=>`<li class="rec"><div><b>${esc(r.title)}</b> <span>${esc(r.detail)}</span></div>${r.done?`<span class="small ok">Applied ✓</span><button class="btn" data-unrec="${n}">Undo</button>${r.same?`<div class="small warnt">The bays didn't change: there's no free input for it. See the warnings under the bays.</div>`:""}`:r.act&&wouldChange(r.act)?`<button class="btn primary" data-rec="${n}">Apply</button>`:`<span class="muted small">Advice only</span>`}</li>`).join("")}</ol><span class="muted small">Apply makes the change straight away. Undo, next to it, takes back just that change.</span>`:"";
+  const sig=()=>JSON.stringify(allocate(cfg).bays.flat().map(p=>p&&[p.key,p.mode]));
+  out.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{ const r=reviewRecs[+b.dataset.rec], was=sig(); r.undo=runAction(r.act); r.done=!!r.undo;
+    r.same=r.done&&sig()===was; renderReview(); });
+  out.querySelectorAll("[data-unrec]").forEach(b=>b.onclick=()=>{ const r=reviewRecs[+b.dataset.unrec]; if(r.undo){ r.undo(); refresh(true); scheduleSave(); } r.undo=null; r.done=false; renderReview(); });
+}
+document.getElementById("askbtn").onclick=async()=>{
+  const out=document.getElementById("askout"), st=document.getElementById("askstate"), btn=document.getElementById("askbtn");
+  if(!sample||!cfg||!layout) return;
+  btn.disabled=true; st.textContent="Thinking…"; reviewRecs=[]; out.innerHTML="";
+  const prompt=`You are an experienced studio engineer reviewing a home studio patchbay plan. Below is the studio as JSON (mixer, interface, gear with ids, outputs with ids and priorities 1-3) and the patchbay layout a rules engine generated. Pairs are named by bay letter and number, like A5. HN = half-normal, N = normal, T = thru.
+
+${describe()}
+
+Suggest up to 6 changes that clearly improve this layout for everyday use: what to move, what to normal differently, gain staging, balanced/unbalanced issues, anything awkward when patching. Skip anything that is a matter of taste. Include an action only when it carries out the whole suggestion inside this planner. If the suggestion needs anything done outside the planner (buying or rewiring a cable, a setting on a unit or the desk, a reamp box or pad) or only partly matches an action, the action must be null. Available actions:
+{"op":"mode","pair":"A5","value":"hn"|"n"|"t"}  change a pair's normalling
+{"op":"swap","pair":"A5","with":"B3"}  swap two pairs
+{"op":"move","pair":"A5","to":"A12"}  move a pair to another position (swaps with what is there)
+{"op":"priority","output":"<output id>","value":1|2|3}  1 always on a channel, 2 if room, 3 off the bay
+{"op":"monoSend","gear":"<gear id>"}  feed a stereo-input effect from one aux into its left input
+{"op":"stereoSend","gear":"<gear id>"}  feed a stereo-input effect from two auxes
+{"op":"level","gear":"<gear id>","value":"pro"|"consumer"|"inst"}  correct a unit's operating level
+{"op":"order","gear":"<gear id>","before":"<gear id>"}  move a unit earlier in the list so it gets channels first
+{"op":"insertOn","gear":"<insert gear id>","output":"<output id or empty>"}  which source output an insert processor is normalled onto
+
+Reply with only a JSON array, no other text: [{"title":"a few words","detail":"one or two sentences, referring to pairs like A5","action":{...} or null}]`;
+  try{ const r=await sample(prompt,{modelTier:"default",onText:()=>{st.textContent="Reviewing…";}}); const t=r.text||"";
+    const j=t.slice(t.indexOf("["),t.lastIndexOf("]")+1); let list=[]; try{ list=JSON.parse(j); }catch(e){}
+    if(!Array.isArray(list)||!list.length){ out.textContent=t; st.textContent=""; }
+    else { reviewRecs=list.slice(0,8).filter(x=>x&&x.title).map(x=>({title:String(x.title),detail:String(x.detail||""),act:bindAction(x.action),done:false})); renderReview(); st.textContent=""; } }
+  catch(e){ if(e&&e.code==="not_granted"){document.getElementById("ask").hidden=true;} else st.textContent=e&&e.code==="rate_limited"?"Claude is busy. Try again in a minute.":"Couldn't reach Claude just now."; }
+  btn.disabled=false;
+};
+
+/* ---------- gear library ---------- */
+// [name, short, role, balanced, outputs, inputs, flags]. Ports split by "|"; "S:" = stereo pair; "T:" = stereo on one TRS jack; ":2"/":3" = priority (default 1).
+const LIB=[
+ ["Akai MPC60","MPC","sampler",0,"Out 1|Out 2|Out 3|Out 4|S:Stereo|Out 5:2|Out 6:2|Out 7:3|Out 8:3","Rec in"],
+ ["Akai MPC3000","MPC","sampler",0,"Out 1|Out 2|Out 3|Out 4|S:Stereo|Out 5:2|Out 6:2|Out 7:3|Out 8:3","S:Rec in"],
+ ["Akai MPC2000XL","MPC","sampler",0,"S:Stereo","S:Rec in"],
+ ["Akai MPC One","MPC","sampler",0,"S:Out 1/2|S:Out 3/4:2","S:In"],
+ ["Akai MPC Live II","MPC","sampler",0,"S:Out 1/2|S:Out 3/4:2|S:Out 5/6:3","S:In"],
+ ["Akai S900","S900","sampler",0,"Mix|Out 1:3|Out 2:3","Rec in"],
+ ["Akai S950","S950","sampler",0,"Mix|Out 1:3|Out 2:3","Line in"],
+ ["Akai S950 (S950FX)","S950","sampler",0,"Mix","Line in","fx"],
+ ["Akai S1000","S1000","sampler",0,"S:Stereo|Out 1:3|Out 2:3","S:Rec in"],
+ ["Akai S3000XL","S3000","sampler",0,"S:Stereo|Out 1:2","S:Rec in"],
+ ["Akai S3200XL","S3200","sampler",0,"S:Stereo|Out 1:2","S:Rec"],
+ ["E-mu SP-1200","SP12","sampler",0,"Mix|Ch 1:2|Ch 2:2|Ch 3:3|Ch 4:3","Sample in"],
+ ["E-mu SP-12","SP12","sampler",0,"Mix|Ch 1:2|Ch 2:2","Sample in"],
+ ["E-mu Emax II","EMAX","sampler",0,"S:Main|Out 1:3|Out 2:3","Sample in"],
+ ["Ensoniq ASR-10","ASR","sampler",0,"S:Main|S:Aux:3","S:In"],
+ ["Ensoniq EPS-16 Plus","EPS","sampler",0,"S:Main","Sample in"],
+ ["Roland VP-9000","VP","sampler",0,"S:Main","S:In"],
+ ["Roland S-760","S760","sampler",0,"S:Mix","S:In"],
+ ["Roland SP-404 MKII","404","sampler",0,"S:Line out","S:Line in"],
+ ["Elektron Octatrack MKII","OT","sampler",0,"S:Main|S:Cue:3","S:In A/B|S:In C/D:3"],
+ ["Elektron Digitakt","DT","sampler",0,"S:Main","S:In"],
+ ["Elektron Digitakt II","DT2","sampler",0,"S:Main","S:In"],
+ ["Roland TR-808","808","source",0,"Mix|Kick:3|Snare:3"],
+ ["Roland TR-909","909","source",0,"Mix|Kick:3|Snare:3"],
+ ["Roland TR-8S","TR8S","source",0,"S:Mix|Assign 1:3|Assign 2:3"],
+ ["Roland SH-101","SH-101","source",0,"Out"],
+ ["Roland TB-303","303","source",0,"Out"],
+ ["Roland Juno-60","JUNO","source",0,"Out"],
+ ["Roland Juno-106","JUNO","source",0,"S:Out"],
+ ["Roland JX-3P","JX3P","source",0,"Out"],
+ ["Roland D-50","D50","source",0,"S:Out"],
+ ["Roland JD-800","JD800","source",0,"S:Main|S:Direct:3"],
+ ["Roland JV-1080","JV","source",0,"S:Mix|S:Direct 1:3|S:Direct 2:3"],
+ ["Roland XV-5080","XV","source",0,"S:Out A:2|S:Out B:3"],
+ ["Casio CZ-101","CZ-101","source",0,"Out"],
+ ["Casio CZ-1000","CZ","source",0,"Out"],
+ ["Oberheim Matrix-1000","MTX","source",0,"Out"],
+ ["Oberheim Matrix-6R","M6R","source",0,"Out"],
+ ["Sequential Prophet-5","P5","source",0,"Out"],
+ ["Sequential Prophet-6","P6","source",0,"S:Out"],
+ ["Sequential OB-6","OB6","source",0,"S:Out"],
+ ["Moog Minimoog Model D","MOOG","source",0,"Out"],
+ ["Moog Subsequent 37","SUB37","source",0,"Out"],
+ ["Behringer Model D","MODEL D","source",0,"Out"],
+ ["Korg MS-20","MS20","source",0,"Out"],
+ ["Korg Polysix","POLY6","source",0,"Out"],
+ ["Korg M1","M1","source",0,"S:Out 1/2|S:Out 3/4:3"],
+ ["Korg Wavestation","WAVE","source",0,"S:Out 1/2|S:Out 3/4:3"],
+ ["Korg minilogue xd","MLXD","source",0,"Out"],
+ ["Yamaha DX7","DX7","source",0,"Out"],
+ ["Yamaha TX81Z","TX81Z","source",0,"S:Out"],
+ ["Ensoniq SD-1","SD-1","source",0,"S:Main|S:Aux:3"],
+ ["Ensoniq ESQ-1","ESQ","source",0,"S:Out"],
+ ["E-mu Proteus 2000","PROT","source",0,"S:Main|S:Sub 1:3"],
+ ["Waldorf Blofeld","BLOF","source",0,"S:Out"],
+ ["Novation Peak","PEAK","source",0,"S:Out"],
+ ["Novation Bass Station II","BS2","source",0,"Out"],
+ ["Alesis Quadraverb","QV","send",0,"S:Out","S:In"],
+ ["Alesis Quadraverb II","QV2","send",0,"S:Out","S:In"],
+ ["Alesis Midiverb II","MV2","send",0,"S:Out","In"],
+ ["Alesis Midiverb III","MV3","send",0,"S:Out","S:In"],
+ ["Lexicon PCM 70","PCM70","send",0,"S:Out","S:In"],
+ ["Lexicon PCM 80","PCM80","send",1,"S:Out","S:In"],
+ ["Lexicon PCM 81","PCM81","send",1,"S:Out","S:In"],
+ ["Lexicon PCM 90","PCM90","send",1,"S:Out","S:In"],
+ ["Lexicon MX200","MX200","send",0,"S:Out","S:In"],
+ ["Yamaha SPX90","SPX90","send",0,"S:Out","In"],
+ ["Yamaha SPX990","SPX990","send",0,"S:Out","S:In"],
+ ["Eventide H3000","H3000","send",1,"S:Out","S:In"],
+ ["Eventide H9","H9","send",0,"S:Out","S:In"],
+ ["Roland SDE-3000","SDE","send",0,"S:Out","In"],
+ ["Roland RE-201 Space Echo","RE201","send",0,"Out","In"],
+ ["Boss SE-70","SE70","send",0,"S:Out","S:In"],
+ ["TC Electronic M3000","M3000","send",1,"S:Out","S:In"],
+ ["Strymon BigSky","BIGSKY","send",0,"S:Out","S:In"],
+ ["Strymon TimeLine","TL","send",0,"S:Out","S:In"],
+ ["Hologram Microcosm","MCOS","send",0,"S:Out","T:In"],
+ ["dbx 160X","DBX","insert",1,"Out","In"],
+ ["dbx 160A","DBX","insert",1,"Out","In"],
+ ["dbx 166XL (one channel)","166","insert",1,"Out","In"],
+ ["FMR RNC 1773","RNC","insert",0,"Out","In"],
+ ["Universal Audio 1176","1176","insert",1,"Out","In"],
+ ["Teletronix LA-2A","LA2A","insert",1,"Out","In"],
+ ["Warm Audio WA76","WA76","insert",1,"Out","In"],
+ ["Drawmer DS201 (one channel)","DS201","insert",1,"Out","In"],
+ ["Behringer MDX2600 (one channel)","MDX","insert",1,"Out","In"],
+ ["TC Electronic Finalizer 96K","FIN","master",1,"","S:In"],
+ ["TC Electronic Finalizer Express","FIN","master",1,"S:Out","S:In"],
+ ["SSL G-Series Bus Compressor","SSL","master",1,"S:Out","S:In"],
+ ["Joemeek SC2","SC2","master",1,"S:Out","S:In"],
+ ["Aphex Aural Exciter Type C","APHEX","master",0,"S:Out","S:In"]
+];
+const libPorts=(spec,withPri)=>String(spec||"").split("|").filter(Boolean).map(x=>{
+  let st=false, trs=false; if(x.startsWith("S:")){st=true;x=x.slice(2);} else if(x.startsWith("T:")){st=trs=true;x=x.slice(2);}
+  const m=x.match(/^(.*?):([123])$/); const label=m?m[1]:x, pri=m?+m[2]:1;
+  const o=withPri?{id:uid(),label,st,pri}:{id:uid(),label,st}; if(trs) o.trs=true; return o;});
+function unitFromLib(e){
+  const [name,short,role,bal,outs,ins,flags]=e;
+  const u={id:uid(),name,short,role,bal:!!bal,outs:libPorts(outs,true),ins:libPorts(ins,false),target:"",...(flags==="fx"?{fx:true}:{})};
+  u.icon=iconFor(u); openUnits.add(u.id); return u;
+}
+function unitFromClaude(r,fallback){
+  const role=ROLE[r.role]?r.role:"source", pri=p=>[1,2,3].includes(+p)?+p:1;
+  return {id:uid(),name:String(r.name||fallback).slice(0,60),short:String(r.short||"").slice(0,8),role,bal:!!r.balanced,
+    outs:(Array.isArray(r.outputs)?r.outputs:[]).slice(0,16).map(o=>({id:uid(),label:String(o.label||"Out").slice(0,24),st:!!o.stereo,pri:pri(o.priority)})),
+    ins:(Array.isArray(r.inputs)?r.inputs:[]).slice(0,8).map(i=>({id:uid(),label:String(i.label||"In").slice(0,24),st:!!i.stereo})),target:""};
+}
+const ROLE_ORDER=["sampler","source","send","insert","master"];
+function libMatches(v){ const w=v.toLowerCase().split(/\s+/).filter(Boolean);
+  return LIB.map((e,n)=>({e,n})).filter(({e})=>w.every(x=>(e[0]+" "+e[1]).toLowerCase().includes(x))); }
+function setupPicker(root,up){
+  root.classList.toggle("up",!!up);
+  root.innerHTML=`<div class="combo"><input class="libq" role="combobox" aria-label="Gear library search" aria-expanded="false" aria-autocomplete="list" autocomplete="off" placeholder="Start typing a model, e.g. MPC60 or Juno-106"><button class="btn primary libadd">Add</button>
+    <div class="liblist" role="listbox" hidden></div></div><span class="libstate small muted">${up?"":"Picks up the outputs, inputs and a starting priority for each. Not listed? Add a blank unit and fill in its outputs."}</span>`;
+  const q=root.querySelector(".libq"), list=root.querySelector(".liblist"), btn=root.querySelector(".libadd"), st=root.querySelector(".libstate");
+  let opts=[], act=-1;
+  const state=(m,bad)=>{ st.textContent=m||""; st.className="libstate small"+(bad?" warnt":" muted"); };
+  const close=()=>{ list.hidden=true; q.setAttribute("aria-expanded","false"); act=-1; };
+  const draw=()=>{ const m=libMatches(q.value); opts=[];
+    if(!m.length){ list.innerHTML=`<div class="libnone">Not in the library yet. Add a blank unit and fill in its outputs.</div>`; }
+    else list.innerHTML=ROLE_ORDER.map(r=>{ const g=m.filter(x=>x.e[2]===r); if(!g.length) return "";
+      return `<div class="libgrp">${esc(ROLE[r].name)}s</div>`+g.map(x=>{ opts.push(x.n); return `<div class="libopt${opts.length-1===act?" act":""}" role="option" data-n="${x.n}" id="${root.dataset.lib}-o${opts.length-1}">${iconSvg(iconFor({name:x.e[0],role:x.e[2]}),"libicon")}<span>${esc(x.e[0])}</span></div>`; }).join(""); }).join("");
+    list.hidden=false; q.setAttribute("aria-expanded","true"); };
+  const mark=()=>{ list.querySelectorAll(".libopt").forEach((o,i)=>o.classList.toggle("act",i===act));
+    const a=list.querySelectorAll(".libopt")[act]; if(a){ a.scrollIntoView({block:"nearest"}); q.setAttribute("aria-activedescendant",a.id);} };
+  const choose=n=>{ q.value=LIB[n][0]; close(); add(); };
+  const add=async()=>{
+    if(!cfg) cfg=JSON.parse(JSON.stringify(BLANK));
+    const v=q.value.trim(); if(!v){ draw(); q.focus(); return; }
+    const exact=LIB.find(x=>x[0].toLowerCase()===v.toLowerCase()), m=libMatches(v), e=exact||(m.length===1?m[0].e:null);
+    if(e){ cfg.gear.push(unitFromLib(e)); q.value=""; close(); state(`Added ${e[0]}. Check its outputs and priorities${up?" above":" below"}.`); refresh(true); scheduleSave(); return; }
+    if(m.length>1){ draw(); state("Several models match. Pick one from the list."); return; }
+    close();
+    if(!sample){ state(`${v} isn't in the library yet. Add a blank unit and fill in its outputs.`); return; }
+    btn.disabled=true; state(`${v} isn't in the library. Asking Claude for its outputs and inputs…`);
+    try{
+      const r=await sample.json(`A musician is adding a piece of studio gear to a patchbay planner. Give its rear-panel audio connections as JSON only, no prose.
+Gear: "${v.replace(/"/g,"'").slice(0,80)}"
+Shape: {"name": full make and model, "short": scribble-strip label of 8 characters or fewer, "role": one of "source" (synth, drum machine), "sampler" (records audio and plays it back), "send" (reverb/delay fed from an aux), "insert" (single-channel compressor/EQ/gate), "master" (stereo processor used across the whole mix), "balanced": true if its main audio I/O is balanced, "outputs": [{"label": short name, "stereo": true for an L/R pair counted once, "priority": 1 for main outputs, 2 for useful extras, 3 for rarely used individual outputs}], "inputs": [{"label": short name, "stereo": true for an L/R pair}]}.
+Audio only: no MIDI, sync, digital, headphone or footswitch jacks. If you don't recognise the gear, return {"unknown": true}.`,{modelTier:"default"});
+      if(!r||r.unknown||!Array.isArray(r.outputs)) state(`Claude doesn't know ${v}. Add a blank unit and fill in its outputs.`);
+      else { const u=unitFromClaude(r,v); u.icon=iconFor(u); openUnits.add(u.id); cfg.gear.push(u); q.value=""; state(`Added ${r.name||v} from Claude's knowledge. Check its connections against the manual.`); refresh(true); scheduleSave(); }
+    }catch(err){
+      if(err&&err.code==="not_granted"){ sample=null; state(`${v} isn't in the library yet. Add a blank unit and fill in its outputs.`); }
+      else state(err&&err.code==="rate_limited"?"Claude is busy. Try again in a minute.":"Couldn't look that up just now. Add a blank unit instead.",true);
+    }
+    btn.disabled=false;
+  };
+  q.addEventListener("focus",draw);
+  q.addEventListener("input",()=>{ act=-1; draw(); });
+  q.addEventListener("blur",()=>setTimeout(close,150));
+  q.addEventListener("keydown",e=>{
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); if(list.hidden) draw(); if(!opts.length) return;
+      act=e.key==="ArrowDown"?Math.min(opts.length-1,act+1):Math.max(0,act-1); mark(); }
+    else if(e.key==="Enter"){ e.preventDefault(); if(!list.hidden&&act>=0) choose(opts[act]); else add(); }
+    else if(e.key==="Escape"){ close(); }
+  });
+  list.addEventListener("mousedown",e=>e.preventDefault());
+  list.addEventListener("click",e=>{ const o=e.target.closest(".libopt"); if(o) choose(+o.dataset.n); });
+  btn.addEventListener("click",add);
+}
+document.querySelectorAll(".libpick").forEach(el=>setupPicker(el,el.dataset.lib==="bottom"));
+
+/* ---------- quick setup: auto-arrange ---------- */
+const USES={
+ balanced:{name:"All-round",rank:{pads:0,drum:1,synth:2,keys:3,desktop:4,rack:5},drumInd:[4,2],note:"drums first, then synths, then samplers and modules"},
+ beats:{name:"Beat-making",rank:{pads:0,drum:1,desktop:2,synth:3,rack:4,keys:5},drumInd:[6,2],note:"drum machines and pad samplers get the most channels"},
+ synths:{name:"Synth production",rank:{synth:0,keys:1,desktop:2,rack:3,pads:4,drum:5},drumInd:[0,2],note:"synths get channels first; drums come in on their stereo mix"}
+};
+let autoUndo=null, autoLast=null;
+function autoArrange(useKey){
+  const U=USES[useKey]||USES.balanced, before=JSON.stringify(cfg);
+  const kind=g=>iconFor(g), drumish=g=>kind(g)==="pads"||kind(g)==="drum";
+  const rank=g=>U.rank[kind(g)]??6;
+  const EXTRA=/aux|direct|sub|cue|assign|out [b-h]\b|out [3-9]\/|ch \d|kick|snare|individual/i, IND=/^(out|output)\s*\d+$/i;
+  // 1. order: sound sources and samplers by the use case, everything else keeps its order after them
+  const src=cfg.gear.filter(g=>g.role==="source"||g.role==="sampler"), rest=cfg.gear.filter(g=>!src.includes(g));
+  src.sort((a,b)=>rank(a)-rank(b)); cfg.gear=[...src,...rest];
+  // 2. priorities
+  src.forEach(g=>{ let ind=0;
+    g.outs.forEach((o,i)=>{
+      if(g.outs.length===1){ o.pri=1; return; }
+      if(IND.test(o.label)){ ind++; const [p1,p2]=drumish(g)?U.drumInd:[0,1]; o.pri=ind<=p1?1:ind<=p1+p2?2:3; return; }
+      if(EXTRA.test(o.label)){ o.pri=3; return; }
+      o.pri=i===0||/main|mix|stereo|line out|^out$/i.test(o.label)?1:2;
+    });
+    if(useKey==="synths"&&drumish(g)) g.outs.forEach(o=>{ if(!o.st&&IND.test(o.label)) o.pri=Math.max(o.pri,2); });
+  });
+  // 3. insert processors go on the first mono synth (a bass part benefits most)
+  const monoSynth=src.filter(g=>g.role==="source").flatMap(g=>g.outs.filter(o=>!o.st&&+o.pri===1))[0];
+  cfg.gear.filter(g=>g.role==="insert").forEach((g,i)=>{ g.target=i===0&&monoSynth?monoSynth.id:""; });
+  // 4. fit: demote the least important always-on outputs until everything priority 1 has a home
+  delete cfg.overrides;
+  const demoteOrder=()=>[...src].reverse().flatMap(g=>[...g.outs].reverse().filter(o=>IND.test(o.label)).concat([...g.outs].reverse().filter(o=>!IND.test(o.label))));
+  for(let n=0;n<60;n++){
+    const L=allocate(cfg), homeless=L.warn.some(w=>/priority 1 but/.test(w)), full=L.warn.some(w=>/^This needs/.test(w));
+    if(!homeless&&!full) break;
+    const from=homeless?1:2, o=demoteOrder().find(x=>+x.pri===from&&!(from===1&&src.find(g=>g.outs[0]===x&&rank(g)<=1)));
+    if(!o) break; o.pri=from+1;
+  }
+  if(!autoUndo||before!==autoLast) autoUndo=before; autoLast=JSON.stringify(cfg); selected=null; current="none"; openUnits.clear();
+  refresh(true); scheduleSave();
+  const c=[1,2,3].map(p=>src.reduce((n,g)=>n+g.outs.filter(o=>+o.pri===p).length,0));
+  autoState(`Arranged for ${U.name.toLowerCase()}: ${U.note}. ${c[0]} outputs always on a channel, ${c[1]} when one is free, ${c[2]} patch only. Hand changes to the bays were cleared.`,true);
+}
+function autoState(msg,undo){ document.getElementById("autostate").textContent=msg||""; document.getElementById("autoundo").hidden=!undo; }
+document.getElementById("autobtn").onclick=()=>{ if(!cfg){ cfg=JSON.parse(JSON.stringify(BLANK)); } if(!cfg.gear.length){ autoState("Add some gear first, then auto-arrange it."); return; } autoArrange(document.getElementById("autouse").value); };
+document.getElementById("autoundo").onclick=()=>{ if(!autoUndo) return; cfg=JSON.parse(autoUndo); autoUndo=null; autoLast=null; selected=null; refresh(true); scheduleSave(); autoState("Put back the way it was."); };
+document.getElementById("autouse").innerHTML=Object.entries(USES).map(([k,u])=>`<option value="${k}">${esc(u.name)}</option>`).join("");
+
+/* ---------- undo / redo ---------- */
+let hist=[], fut=[], histCur=null, histT=0;
+function resetHistory(){ hist=[]; fut=[]; histCur=cfg?JSON.stringify(cfg):null; histT=0; undoBtns(); }
+function trackHistory(){ if(!cfg) return; const now=JSON.stringify(cfg); if(now===histCur) return; const t=Date.now();
+  if(histCur!==null&&t-histT>800){ hist.push(histCur); if(hist.length>100) hist.shift(); }
+  histT=t; histCur=now; fut=[]; undoBtns(); }
+function undoBtns(){ const u=document.getElementById("undo"), r=document.getElementById("redo"); if(u) u.disabled=!hist.length; if(r) r.disabled=!fut.length; }
+function stepHistory(back){ const from=back?hist:fut, to=back?fut:hist; if(!from.length) return;
+  to.push(JSON.stringify(cfg)); cfg=JSON.parse(from.pop()); histCur=JSON.stringify(cfg); histT=0; drawing=false;
+  refresh(true); renderStudioBar(); undoBtns(); queueSave(); }
+document.getElementById("undo").onclick=()=>stepHistory(true);
+document.getElementById("redo").onclick=()=>stepHistory(false);
+document.addEventListener("keydown",e=>{ if(!(e.ctrlKey||e.metaKey)||e.key.toLowerCase()!=="z") return;
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement&&document.activeElement.tagName)) return;
+  e.preventDefault(); stepHistory(!e.shiftKey); });
+
+/* ---------- draw your own patches ---------- */
+let drawing=false, draft={cords:[],pend:null,id:null,name:""};
+function myPatches(){
+  (cfg.patches||[]).forEach(m=>{ const ok=m.cords.filter(c=>c.every(k=>IDX[k]));
+    PATHS.push({id:"my-"+m.id,group:"mine",label:esc(m.name)+(ok.length<m.cords.length?" ⚠":""),cords:ok,
+      note:(m.note?`${esc(m.note)} `:"")+(ok.length<m.cords.length?`<b>Some cords in this patch point at jacks that are no longer on the bays, so they're hidden.</b> Edit it and save it again to tidy it up. `:"")+`<span class="muted">Your saved patch: ${ok.length} cord${ok.length===1?"":"s"}.</span>`}); });
+  if(drawing) PATHS.push({id:"draft",group:"draft",label:"Drawing…",cords:draft.cords.filter(c=>c.every(k=>IDX[k])),note:""});
+}
+function draftNote(){ const n=draft.cords.length;
+  return `<b>Drawing a patch.</b> Click an output (top jack), then the input (bottom jack) it should feed. Click a jack that already has a cord to remove that cord. ${n?`${n} cord${n>1?"s":""} so far.`:""}${draft.pend?` <b>Now pick an input${draft.pend.pos==="t"?"":"… or an output"}.</b>`:""}`; }
+function renderDrawbar(){
+  const el=document.getElementById("drawbar"); if(!el) return;
+  if(!cfg||!layout){ el.innerHTML=""; return; }
+  const mine=current.startsWith("my-")?(cfg.patches||[]).find(m=>"my-"+m.id===current):null;
+  el.innerHTML=drawing?`<label class="f">Patch name<input id="dname" value="${esc(draft.name)}" placeholder="e.g. Vinyl session"></label><label class="f" style="flex:1 1 220px">Note (optional)<input id="dnote" value="${esc(draft.note||"")}" placeholder="What it's for, settings to remember"></label><button class="btn primary" id="dsave"${draft.cords.length?"":" disabled"}>Save patch</button><button class="btn" id="dclear">Clear cords</button><button class="btn" id="dcancel">Cancel</button>`
+    :`<button class="btn" id="dstart">✎ Draw a patch</button>${mine?`<button class="btn" id="dedit">Edit “${esc(mine.name)}”</button><button class="btn" id="ddel">Delete it</button>`:""}`;
+  const on=(id,f)=>{ const b=document.getElementById(id); if(b) b.onclick=f; };
+  on("dstart",()=>{ drawing=true; draft={cords:[],pend:null,id:null,name:`My patch ${(cfg.patches||[]).length+1}`,note:""}; current="draft"; renderBays(); });
+  on("dedit",()=>{ drawing=true; draft={cords:mine.cords.map(c=>[...c]),pend:null,id:mine.id,name:mine.name,note:mine.note||""}; current="draft"; renderBays(); });
+  on("ddel",()=>{ cfg.patches=(cfg.patches||[]).filter(m=>m!==mine); current="none"; renderBays(); scheduleSave(); });
+  on("dcancel",()=>{ drawing=false; current=draft.id?"my-"+draft.id:"none"; renderBays(); });
+  on("dclear",()=>{ draft.cords=[]; draft.pend=null; updateDraft(); });
+  on("dsave",()=>{ const name=(document.getElementById("dname").value||"").trim()||"My patch", note=(document.getElementById("dnote").value||"").trim();
+    cfg.patches=cfg.patches||[]; const id=draft.id||uid(), rec={id,name,note,cords:draft.cords.map(c=>[...c])};
+    const i=cfg.patches.findIndex(m=>m.id===id); if(i>=0) cfg.patches[i]=rec; else cfg.patches.push(rec);
+    drawing=false; current="my-"+id; renderBays(); scheduleSave(); });
+  const dn=document.getElementById("dname"); if(dn) dn.oninput=()=>{ draft.name=dn.value; };
+  const dt=document.getElementById("dnote"); if(dt) dt.oninput=()=>{ draft.note=dt.value; };
+}
+function updateDraft(){ const p=PATHS.find(x=>x.id==="draft"); if(p) p.cords=draft.cords.filter(c=>c.every(k=>IDX[k])); applyPath(); renderDrawbar();
+  document.querySelectorAll(".pend").forEach(x=>x.classList.remove("pend"));
+  if(draft.pend){ const {b,i,pos}=IDX[draft.pend.key]||{}; document.querySelectorAll(`[data-j="${b}-${i}-${pos}"]`).forEach(x=>x.classList.add("pend")); } }
+document.getElementById("bays").addEventListener("click",e=>{
+  if(!drawing) return; const j=e.target.closest("[data-j]"); if(!j) return; e.stopPropagation();
+  const [b,i,pos]=j.dataset.j.split("-"), p=layout.bays[+b][+i], jack=pos==="t"?p.top:p.bot; if(!jack||!jack.k) return;
+  const hit=draft.cords.findIndex(c=>c.includes(jack.k));
+  if(hit>=0){ draft.cords.splice(hit,1); draft.pend=null; }
+  else if(!draft.pend||draft.pend.pos===pos) draft.pend={key:jack.k,pos};
+  else { draft.cords.push(pos==="b"?[draft.pend.key,jack.k]:[jack.k,draft.pend.key]); draft.pend=null; }
+  updateDraft();
+},true);
+
+/* ---------- rack view (phone-friendly) ---------- */
+let view=(()=>{ const v=lsGet("patchbay-view"); return v||(window.innerWidth<760?"rack":"panel"); })(), rackBay=0;
+function setView(v){ view=v; lsSet("patchbay-view",v); document.querySelectorAll("[data-view]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.view===v)); renderBays(); }
+document.querySelectorAll("[data-view]").forEach(b=>{ b.setAttribute("aria-pressed",b.dataset.view===view); b.onclick=()=>setView(b.dataset.view); });
+function rackHtml(){
+  const P=+cfg.studio.pairsPerBay||24, N=layout.bays.length; if(rackBay>=N) rackBay=0;
+  const tabs=N>1?`<div class="fields racktabs">${layout.bays.map((_,bi)=>`<button class="chip" data-rb="${bi}" aria-pressed="${bi===rackBay}">Bay ${String.fromCharCode(65+bi)}</button>`).join("")}</div>`:"";
+  const cell=(x,bi,i,pos)=>x?`<span class="rcell" data-j="${bi}-${i}-${pos}">${x.s.replace(/<br>/g," ")}</span>`:`<span class="rcell none">—</span>`;
+  return tabs+layout.bays.map((bay,bi)=>bi!==rackBay?"":`<div class="rackbay"><div class="rackhead"><b>Bay ${String.fromCharCode(65+bi)}</b><span>${bay.filter(Boolean).length}/${P} pairs</span></div>
+    <div class="rrow rhead"><span>#</span><span>Top · output</span><span></span><span>Bottom · input</span></div>
+    ${bay.map((p,i)=>p?`<div class="rrow" data-row="${bi}-${i}" data-b="${bi}" data-i="${i}" tabindex="0" role="button">
+      <span class="rn">${i+1}</span>${cell(p.top,bi,i,"t")}<span class="mode ${p.mode}${p.mode!==p.auto?" ovr":""}">${p.mode.toUpperCase()}</span>${cell(p.bot,bi,i,"b")}${p.lv&&p.lv.length?`<span class="lvbadge ${p.lv.some(x=>x.sev==="warn")?"warn":"info"}">${p.lv.some(x=>x.sev==="warn")?"!":"i"}</span>`:""}</div>`
+      :`<div class="rrow empty"><span class="rn">${i+1}</span><span class="rcell none">—</span><span></span><span class="rcell none">—</span></div>`).join("")}</div>`).join("");
+}
+
+/* ---------- exports: wiring checklist, bay image, bay sheet ---------- */
+const MODEN={hn:"Half-normal",n:"Normal",t:"Thru (no normal)"};
+function wiringHtml(){
+  const S=cfg.studio, rows=[];
+  layout.bays.forEach((bay,bi)=>bay.forEach((p,i)=>{ if(!p) return; const B=String.fromCharCode(65+bi);
+    rows.push(`<tr><td class="ck">☐</td><td><b>${B}${i+1}</b></td><td>${p.top?`${esc(p.top.f)}<div class="c">${CAB[p.top.cab]}, ${LEN[p.top.loc]||"3 m"}</div>`:"—"}</td><td>${p.bot?`${esc(p.bot.f)}<div class="c">${CAB[p.bot.cab]}, ${LEN[p.bot.loc]||"3 m"}</div>`:"—"}</td><td>${p.top&&p.bot?MODEN[p.mode]:"Thru (one side only)"}</td></tr>`); }));
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(nameOf(cfg))} wiring checklist</title>
+<style>@page{size:A4 portrait;margin:10mm}body{font:9.5pt system-ui,sans-serif;color:#000;background:#fff;margin:0;padding:10mm}h1{font-size:14pt;margin:0 0 2mm}p{margin:0 0 4mm}
+table{border-collapse:collapse;width:100%}th,td{border-bottom:.3mm solid #bbb;padding:1.6mm 2mm;text-align:left;vertical-align:top}th{font-size:8pt;text-transform:uppercase;letter-spacing:.05em;color:#444}
+.c{color:#555;font-size:8pt}.ck{font-size:13pt;width:7mm}tr{break-inside:avoid}</style></head><body>
+<h1>${esc(nameOf(cfg))} · rear wiring checklist</h1>
+<p>${esc(S.bayName||"Patchbay")}, ${layout.bays.length} bay${layout.bays.length>1?"s":""} of ${S.pairsPerBay} pairs. Rear top socket = the output that feeds the pair, rear bottom socket = the input it feeds. Set each pair's normalling as listed before you screw the bay in.</p>
+<table><thead><tr><th></th><th>Pair</th><th>Rear top ← from</th><th>Rear bottom → to</th><th>Normalling</th></tr></thead><tbody>${rows.join("")}</tbody></table></body></html>`;
+}
+function baySvg(){
+  const P=+cfg.studio.pairsPerBay||24, W=34, bayH=150, gap=26, pad=26, N=layout.bays.length, path=PATHS.find(p=>p.id===current);
+  const width=pad*2+P*W, height=N*(bayH+gap)+40;
+  const colr=["#d4553f","#3f7fd4","#8a5bd0","#2f9c5a"], modeC={hn:"#2f9c8f",n:"#d99a2b",t:"#7b838c"};
+  const lab=(s,x,y)=>String(s||"").split("<br>").map((t,k)=>`<text x="${x}" y="${y+k*8.5}" text-anchor="middle" font-size="7" font-weight="600" fill="#202326">${t.toUpperCase()}</text>`).join("");
+  const pos={}; let out="";
+  layout.bays.forEach((bay,bi)=>{ const y0=bi*(bayH+gap)+30;
+    out+=`<rect x="4" y="${y0}" width="${width-8}" height="${bayH}" rx="6" fill="#24272b"/><text x="${pad}" y="${y0+16}" font-size="11" font-weight="700" fill="#e6e3da">BAY ${String.fromCharCode(65+bi)}</text>`;
+    bay.forEach((p,i)=>{ const x=pad+i*W+W/2;
+      out+=`<text x="${x}" y="${y0+30}" text-anchor="middle" font-size="7" fill="#9da1a6">${i+1}</text>`;
+      if(!p) return;
+      if(p.top) out+=`<rect x="${x-15.5}" y="${y0+35}" width="31" height="20" rx="1.5" fill="#f1eee4"/>`+lab(p.top.s,x,y0+43);
+      if(p.bot) out+=`<rect x="${x-15.5}" y="${y0+105}" width="31" height="20" rx="1.5" fill="#f1eee4"/>`+lab(p.bot.s,x,y0+113);
+      [["t",y0+68],["b",y0+92]].forEach(([q,y])=>{ const j=q==="t"?p.top:p.bot; if(j){ pos[`${bi}-${i}-${q}`]=[x,y]; out+=`<circle cx="${x}" cy="${y}" r="7" fill="#101214" stroke="#b9bcc0" stroke-width="2.5"${["U","Y","S"].includes(j.cab)?' stroke-dasharray="2 2"':""}/>`; } });
+      if(p.top&&p.bot) out+=`<rect x="${x-1.5}" y="${y0+76}" width="3" height="8" fill="${modeC[p.mode]}"${p.mode==="t"?' opacity=".4"':""}/>`;
+      out+=`<rect x="${x-9}" y="${y0+130}" width="18" height="10" rx="2" fill="${modeC[p.mode]}"/><text x="${x}" y="${y0+137.5}" text-anchor="middle" font-size="6.5" font-weight="700" fill="#111">${p.mode.toUpperCase()}</text>`;
+    }); });
+  if(path&&path.cords.length) path.cords.forEach((c,n)=>{ const [a,b]=c.map(k=>{ const q=IDX[k]; return q&&pos[`${q.b}-${q.i}-${q.pos}`]; }); if(!a||!b) return;
+    const sag=Math.min(110,30+Math.abs(b[0]-a[0])*.15+Math.abs(b[1]-a[1])*.1), yy=Math.max(a[1],b[1])+sag, col=colr[n%4];
+    out+=`<path d="M${a[0]},${a[1]} C${a[0]},${yy} ${b[0]},${yy} ${b[0]},${b[1]}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" opacity=".9"/><circle cx="${a[0]}" cy="${a[1]}" r="5" fill="${col}"/><circle cx="${b[0]}" cy="${b[1]}" r="5" fill="${col}"/>`; });
+  const title=`${esc(nameOf(cfg))} · ${esc(cfg.studio.bayName||"Patchbay")}${path&&path.cords.length?` · ${path.label}`:""}`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height+60}" width="${width}" height="${height+60}" font-family="Arial Narrow, Arial, sans-serif"><rect width="100%" height="100%" fill="#fff"/><text x="${pad}" y="20" font-size="13" font-weight="700" fill="#111">${title}</text>${out}</svg>`;
+}
+function sheetHtml(){
+  const path=PATHS.find(p=>p.id===current), cords=path&&path.cords.length?path.cords.map((c,n)=>{ const [a,b]=c.map(k=>IDX[k]); return `<li><b>${String.fromCharCode(65+a.b)}${a.i+1} top</b> (${esc(a.p.top.f)}) → <b>${String.fromCharCode(65+b.b)}${b.i+1} bottom</b> (${esc(b.p.bot.f)})</li>`; }).join(""):"";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(nameOf(cfg))} patchbay sheet</title>
+<style>@page{size:A4 landscape;margin:8mm}body{font:10pt system-ui,sans-serif;margin:0;padding:8mm;background:#fff;color:#000}svg{width:100%;height:auto}p,ul{margin:3mm 0}.tip{color:#555}@media print{.tip{display:none}}</style></head><body>
+<p class="tip">Print this page, or choose “Save as PDF” in the print dialog, for a copy to pin up by the rack.</p>
+${baySvg()}<p><b>Key:</b> HN half-normal (top jack takes a copy, bottom jack replaces), N normal (either jack breaks the link), T thru (no normal). Dotted rings are unbalanced rear connections.</p>
+${cords?`<p><b>Cords for “${path.label}”:</b></p><ul>${cords}</ul>`:""}</body></html>`;
+}
+
+/* ---------- MIDI and sync ---------- */
+const NOMIDI=/sh-101|tb-303|tr-808|juno-60|minimoog|ms-20|polysix|prophet-5|re-201|space echo/i;
+const MIDIOPT={none:"No MIDI",in:"MIDI in only",thru:"MIDI in and thru",full:"MIDI in, out and thru"};
+const midiOf=g=>g.midi||(NOMIDI.test(g.name||"")?"none":g.role==="insert"||g.role==="master"?"none":iconFor(g)==="pedal"?"in":g.role==="send"?"thru":"full");
+const clockOf=g=>g.clock??(midiOf(g)!=="none"&&(["pads","drum","desktop","pedal","tape"].includes(iconFor(g))||g.role==="send"&&/delay|echo|timeline|microcosm|h9|sde/i.test(g.name||"")));
+function planMidi(){
+  const S=cfg.studio, M=cfg.midi||{}, gear=cfg.gear, list=x=>String(x||"").split(",").map(v=>v.trim()).filter(Boolean);
+  const cands=gear.filter(g=>midiOf(g)==="full"); const master=M.master==="daw"?null:(gear.find(g=>g.id===M.master)||cands.find(g=>g.role==="sampler"&&iconFor(g)==="pads")||cands[0]||null);
+  const outs=list(M.outs)||[]; const ports=outs.length?outs:(master&&/mpc60|mpc3000/i.test(master.name)?["Out A","Out B","Out C","Out D"]:["MIDI Out"]);
+  const max=Math.max(1,+M.chain||3), ifName=S.iface.short||S.iface.name, hasIf=M.iface!==false;
+  const rx=gear.filter(g=>g!==master&&midiOf(g)!=="none"), noThru=g=>midiOf(g)==="in";
+  const ordered=[...rx.filter(g=>!noThru(g)),...rx.filter(noThru)];
+  const chains=ports.map(p=>({port:p,units:[]})), overflow=[];
+  const open=c=>c.units.length<max&&(!c.units.length||!noThru(c.units[c.units.length-1]));
+  ordered.forEach(g=>{ const c=chains.filter(open).sort((a,b)=>a.units.length-b.units.length)[0]; if(c) c.units.push(g); else overflow.push(g); });
+  let ifChain=null; if(master&&hasIf){ ifChain=chains.find(c=>!c.units.length||!noThru(c.units[c.units.length-1])&&c.units.length<max+1)||null; }
+  const ch={}; chains.forEach(c=>{ let n=1; c.units.forEach(g=>{ if(g.role==="send"){ ch[g.id]=null; return; } const drum=["pads","drum"].includes(iconFor(g)); if(drum&&!Object.values(ch).includes(10)){ ch[g.id]=10; return; } if(n===10) n++; ch[g.id]=n++; }); });
+  return {master,ports,chains,overflow,ifChain,ifName,hasIf,ch,max,silent:gear.filter(g=>midiOf(g)==="none"&&(g.role==="source"||g.role==="sampler"))};
+}
+function renderMidi(){
+  const el=document.getElementById("midi"); if(!el) return; if(!cfg){ el.innerHTML=""; return; }
+  const M=cfg.midi||{}, R=planMidi(), gear=cfg.gear, mast=R.master;
+  const opts=gear.filter(g=>midiOf(g)==="full").map(g=>`<option value="${g.id}"${mast===g?" selected":""}>${esc(g.name)}</option>`).join("");
+  const chip=(t,cls)=>`<span class="mchip${cls?" "+cls:""}">${t}</span>`;
+  const lines=R.chains.map(c=>`<div class="mline">${chip(`${esc(mast?mast.short||mast.name:"DAW")} ${esc(c.port)}`,"src")}${c.units.map((g,k)=>`<span class="arr">${k?"→ thru →":"→"}</span>${chip(`${esc(g.name)}${R.ch[g.id]?` · ch ${R.ch[g.id]}`:""}${clockOf(g)?" · ⏱":""}`)}`).join("")}${R.ifChain===c?`<span class="arr">${c.units.length?"→ thru →":"→"}</span>${chip(`${esc(R.ifName)} MIDI in`,"src")}`:""}${!c.units.length&&R.ifChain!==c?`<span class="muted small">spare</span>`:""}</div>`).join("");
+  const follow=gear.filter(g=>g!==mast&&clockOf(g)&&midiOf(g)!=="none");
+  el.innerHTML=`<div class="fields">
+      <label class="f">Clock master<select data-midi="master"><option value="daw"${M.master==="daw"?" selected":""}>DAW, through the interface</option>${opts}</select></label>
+      <label class="f">Its MIDI outputs<input data-midi="outs" value="${esc(M.outs||R.ports.join(", "))}" style="width:14em"></label>
+      <label class="f">Units per chain<input type="number" min="1" max="6" data-midi="chain" value="${R.max}"></label>
+      <label class="small"><input type="checkbox" data-midi="iface"${R.hasIf?" checked":""}> The interface has MIDI in and out</label></div>
+    <div class="mlines">${lines}</div>
+    <ul class="plain small">
+      ${mast?`<li>Set <b>${esc(mast.name)}</b> to send MIDI clock and transport on all its outputs.</li>`:`<li>In your DAW, send MIDI clock to the interface's MIDI out (in Ableton: Preferences → Link, Tempo &amp; MIDI → Sync on for that output).</li>`}
+      ${follow.length?`<li>Set these to external MIDI clock (marked ⏱): ${follow.map(g=>esc(g.name)).join(", ")}.</li>`:""}
+      ${mast&&R.ifChain?`<li>The chain ends at the ${esc(R.ifName)} MIDI in, so your DAW follows ${esc(mast.short||mast.name)}: in Ableton turn on Sync for that input, then nudge MIDI Clock Sync Delay until hits line up.</li>`:""}
+      ${mast&&R.hasIf&&!R.ifChain?`<li class="warnt">No chain has room to reach the ${esc(R.ifName)} MIDI in, so the DAW can't follow the clock. Allow one more unit per chain, or add an output.</li>`:""}
+      ${R.overflow.length?`<li class="warnt">No room for ${R.overflow.map(g=>esc(g.name)).join(", ")}. Each chain allows ${R.max} units before thru delay builds up: add a MIDI thru box or another output.</li>`:""}
+      ${R.silent.length?`<li class="muted">No MIDI, so played by hand or gated separately: ${R.silent.map(g=>esc(g.name)).join(", ")}.</li>`:""}
+      <li class="muted">Units marked “in only” end a chain because they can't pass MIDI on. Channels count per output, so ch 1 on Out A and ch 1 on Out B are separate. Channel 10 goes to the first drum machine or pad sampler; effects listen for program changes on their own channel.</li>
+    </ul>`;
+}
+document.getElementById("midi").addEventListener("input",e=>{ const t=e.target, k=t.dataset.midi; if(!k||!cfg) return; cfg.midi=cfg.midi||{};
+  cfg.midi[k]=t.type==="checkbox"?t.checked:t.type==="number"?Math.max(1,parseInt(t.value||"3",10)):t.value; if(k!=="outs") renderMidi(); else clearTimeout(window._mt), window._mt=setTimeout(renderMidi,400); scheduleSave(); });
+
+
+document.getElementById("want").addEventListener("toggle",e=>{ if(!e.target.open&&!drawing&&current!=="none") clearPath(); });
+/* ---------- collapsible sections: open unless this viewer closed them ---------- */
+document.querySelectorAll("details[data-fold]").forEach(d=>{ const k="patchbay-fold-"+d.dataset.fold; if(lsGet(k)==="closed") d.open=false;
+  d.addEventListener("toggle",()=>lsSet(k,d.open?"":"closed")); });
+
+/* ---------- boot ---------- */
+renderBays();
+load();
+(async()=>{ try{ sample=await window.claude?.use?.("sample"); }catch(e){ sample=null; } if(!sample) document.getElementById("ask").hidden=true; })();
+</script>
+
+</body>
+</html>
