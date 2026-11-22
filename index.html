@@ -224,7 +224,7 @@ details summary{cursor:pointer;font:600 1rem var(--display);letter-spacing:.04em
   </section>
 
   <section>
-    <details class="secfold" data-fold="gear" open><summary class="sechead"><h2>Gear</h2><span class="muted small">Order matters within a priority: earlier units get channels and sampler feeds first.</span><span class="fields"><button class="btn" data-all="open">Expand all</button><button class="btn" data-all="close">Collapse all</button></span></summary><div class="foldbody">
+    <details class="secfold" data-fold="gear"><summary class="sechead"><h2>Gear</h2><span class="muted small">Order matters within a priority: earlier units get channels and sampler feeds first.</span><span class="fields"><button class="btn" data-all="open">Expand all</button><button class="btn" data-all="close">Collapse all</button></span></summary><div class="foldbody">
     <div class="panel libbox">
       <label class="f">Add from the gear library</label>
       <div class="libpick" data-lib="top"></div>
@@ -242,19 +242,19 @@ details summary{cursor:pointer;font:600 1rem var(--display);letter-spacing:.04em
   </section>
 
   <section>
-    <details class="secfold" data-fold="studio" open><summary class="sechead"><h2>Studio</h2><span class="muted small">Your patchbays, mixer and interface.</span></summary><div class="foldbody">
+    <details class="secfold" data-fold="studio"><summary class="sechead"><h2>Studio</h2><span class="muted small">Your patchbays, mixer and interface.</span></summary><div class="foldbody">
     <div class="grid2" id="studio"></div>
     </div></details>
   </section>
 
   <section>
-    <details class="secfold" data-fold="midi" open><summary class="sechead"><h2>MIDI and sync</h2><span class="muted small">A suggested MIDI chain: who sends clock, what plugs into what, and each unit's channel.</span></summary><div class="foldbody">
+    <details class="secfold" data-fold="midi"><summary class="sechead"><h2>MIDI and sync</h2><span class="muted small">A suggested MIDI chain: who sends clock, what plugs into what, and each unit's channel.</span></summary><div class="foldbody">
     <div class="panel" id="midi"></div>
     </div></details>
   </section>
 
   <section>
-    <details class="secfold" data-fold="cables" open><summary class="sechead"><h2>Cables</h2><span class="muted small">What to buy to wire the back of the bays, with lengths from where each unit sits.</span></summary><div class="foldbody">
+    <details class="secfold" data-fold="cables"><summary class="sechead"><h2>Cables</h2><span class="muted small">What to buy to wire the back of the bays, with lengths from where each unit sits.</span></summary><div class="foldbody">
     <div class="panel" id="cables"></div>
     </div></details>
   </section>
@@ -1646,9 +1646,9 @@ document.getElementById("midi").addEventListener("input",e=>{ const t=e.target, 
 
 
 document.getElementById("want").addEventListener("toggle",e=>{ if(!e.target.open&&!drawing&&current!=="none") clearPath(); });
-/* ---------- collapsible sections: open unless this viewer closed them ---------- */
-document.querySelectorAll("details[data-fold]").forEach(d=>{ const k="patchbay-fold-"+d.dataset.fold; if(lsGet(k)==="closed") d.open=false;
-  d.addEventListener("toggle",()=>lsSet(k,d.open?"":"closed")); });
+/* ---------- collapsible sections: closed unless this viewer opened them ---------- */
+document.querySelectorAll("details[data-fold]").forEach(d=>{ const k="patchbay-fold-"+d.dataset.fold; if(lsGet(k)==="open") d.open=true;
+  d.addEventListener("toggle",()=>lsSet(k,d.open?"open":"")); });
 
 /* ---------- boot ---------- */
 renderBays();
